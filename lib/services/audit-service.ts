@@ -80,6 +80,13 @@ export async function createAudit(
     // This is where we would trigger the diagnostic workflow
     // Example: await triggerDiagnosticWorkflow(auditRecord.audit_id, normalizedUrl);
 
+    // Development-only: Auto-trigger mock processor (optional)
+    // Uncomment to automatically process audits in development:
+    // if (process.env.NODE_ENV === "development") {
+    //   const { processMockAudit } = await import("./mock-audit-processor");
+    //   processMockAudit(auditRecord.audit_id).catch(console.error);
+    // }
+
     return {
       auditId: auditRecord.audit_id,
       status: "submitted",
