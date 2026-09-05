@@ -61,3 +61,20 @@ p {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+.status {
+  margin-top: 1.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.status-ok {
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.status-wait {
+  background: #fff7ed;
+  color: #9a3412;
+}
