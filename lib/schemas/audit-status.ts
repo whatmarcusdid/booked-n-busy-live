@@ -20,6 +20,7 @@ export const auditStatusResponseSchema = z.object({
     "partial",
     "needs_review",
     "failed",
+    "unsupported",
   ]),
   progress: z.object({
     percentage: z.number().min(0).max(100),
@@ -39,6 +40,7 @@ export const auditStatusResponseSchema = z.object({
         "approved",
         "published",
         "revoked",
+        "expired",
       ]),
       pillars: z
         .array(

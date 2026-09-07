@@ -86,10 +86,12 @@ ALTER TABLE audits
       'complete',
       'partial',
       'needs_review',
-      'failed'
+      'failed',
+      'unsupported'
     )
   ) NOT VALID;
 
+-- Keep publication_status 'draft' (not renamed to 'not_ready') to avoid unnecessary churn.
 ALTER TABLE report_revisions
   ADD CONSTRAINT report_revisions_publication_status_allowed
   CHECK (
@@ -98,6 +100,7 @@ ALTER TABLE report_revisions
       'review_required',
       'approved',
       'published',
-      'revoked'
+      'revoked',
+      'expired'
     )
   ) NOT VALID;
