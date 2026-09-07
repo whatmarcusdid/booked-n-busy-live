@@ -96,10 +96,9 @@ describe("GET /api/v1/audit-status/[token]", () => {
         overallScore: 0.78,
         publicationStatus: "review_required",
         pillars: [
-          { key: "visibility", name: "Online Visibility", score: 0.75 },
-          { key: "engagement", name: "User Engagement", score: 0.82 },
-          { key: "conversion", name: "Conversion Optimization", score: 0.76 },
-          { key: "trust", name: "Trust & Credibility", score: 0.79 },
+          { key: "trust_signals", name: "Trust Signals", score: 0.79 },
+          { key: "lead_conversion", name: "Lead Conversion", score: 0.76 },
+          { key: "growth_infrastructure", name: "Growth Infrastructure", score: 0.75 },
         ],
         topRecommendations: [
           {
@@ -137,7 +136,7 @@ describe("GET /api/v1/audit-status/[token]", () => {
     expect(data.report).toBeDefined();
     expect(data.report.overallScore).toBe(0.78);
     expect(data.report.publicationStatus).toBe("review_required");
-    expect(data.report.pillars).toHaveLength(4);
+    expect(data.report.pillars).toHaveLength(3);
     expect(data.report.topRecommendations).toHaveLength(3);
   });
 
@@ -240,7 +239,7 @@ describe("GET /api/v1/audit-status/[token]", () => {
         overallScore: 0.78,
         publicationStatus: "review_required",
         pillars: [
-          { key: "visibility", name: "Online Visibility", score: 0.75 },
+          { key: "growth_infrastructure", name: "Growth Infrastructure", score: 0.75 },
         ],
         topRecommendations: [
           {

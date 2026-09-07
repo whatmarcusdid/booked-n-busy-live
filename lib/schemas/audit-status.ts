@@ -17,6 +17,9 @@ export const auditStatusResponseSchema = z.object({
     "generating_report",
     "validating_report",
     "complete",
+    "partial",
+    "needs_review",
+    "failed",
   ]),
   progress: z.object({
     percentage: z.number().min(0).max(100),
@@ -35,6 +38,7 @@ export const auditStatusResponseSchema = z.object({
         "review_required",
         "approved",
         "published",
+        "revoked",
       ]),
       pillars: z
         .array(
@@ -113,6 +117,18 @@ export function getProgressInfo(status: string): {
       eta: "Less than a minute",
     },
     complete: { percentage: 100, step: "Report ready!" },
+    partial: {
+      percentage: 100,
+      step: "Partial report ready",
+    },
+    needs_review: {
+      percentage: 100,
+      step: "Results need review",
+    },
+    failed: {
+      percentage: 100,
+      step: "Audit could not be completed",
+    },
   };
 
   const info = statusMap[status] || statusMap.submitted;
@@ -128,5 +144,11 @@ export function getProgressInfo(status: string): {
  * Check if a status is terminal (no further processing)
  */
 export function isTerminalState(status: string): boolean {
-  return status === "complete" || status === "failed" || status === "expired";
+  return (
+    status === "complete" ||
+    status === "partial" ||
+    status === "needs_review" ||
+    status === "failed" ||
+    status === "expired"
+  );
 }

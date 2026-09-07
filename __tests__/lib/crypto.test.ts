@@ -1,4 +1,4 @@
-import { generateSecureToken, sha256Hash, hashEmail } from "@/lib/crypto";
+import { generateSecureToken, hmacSha256, hashEmail } from "@/lib/crypto";
 
 describe("Crypto utilities", () => {
   describe("generateSecureToken", () => {
@@ -17,29 +17,41 @@ describe("Crypto utilities", () => {
 
     it("should generate tokens of appropriate length", () => {
       const token = generateSecureToken(16);
-      // Base64url encoding: 4 chars per 3 bytes, so ~22 chars for 16 bytes
       expect(token.length).toBeGreaterThanOrEqual(20);
     });
   });
 
-  describe("sha256Hash", () => {
+  describe("hmacSha256", () => {
     it("should hash a string", () => {
-      const hash = sha256Hash("test");
+      const hash = hmacSha256("test");
       expect(hash).toBeDefined();
       expect(typeof hash).toBe("string");
-      expect(hash.length).toBe(64); // SHA-256 produces 64 hex characters
+      expect(hash.length).toBe(64);
     });
 
     it("should produce consistent hashes", () => {
-      const hash1 = sha256Hash("test");
-      const hash2 = sha256Hash("test");
+      const hash1 = hmacSha256("test");
+      const hash2 = hmacSha256("test");
       expect(hash1).toBe(hash2);
     });
 
     it("should produce different hashes for different inputs", () => {
-      const hash1 = sha256Hash("test1");
-      const hash2 = sha256Hash("test2");
+      const hash1 = hmacSha256("test1");
+      const hash2 = hmacSha256("test2");
       expect(hash1).not.toBe(hash2);
+    });
+
+    it("should throw when DATA_HASH_SECRET is missing", () => {
+      const original = process.env.DATA_HASH_SECRET;
+      delete process.env.DATA_HASH_SECRET;
+
+      try {
+        expect(() => hmacSha256("test")).toThrow(
+          "Missing required environment variable: DATA_HASH_SECRET",
+        );
+      } finally {
+        process.env.DATA_HASH_SECRET = original;
+      }
     });
   });
 

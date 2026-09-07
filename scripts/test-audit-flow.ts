@@ -6,7 +6,6 @@
 import { createAudit } from "../lib/services/audit-service";
 import { processMockAudit } from "../lib/services/mock-audit-processor";
 import { getAuditStatus } from "../lib/services/audit-status-service";
-import { generateSecureToken, sha256Hash } from "../lib/crypto";
 import type { AuditSubmission } from "../lib/schemas/audit-submission";
 
 // Set environment to development without assigning the read-only NODE_ENV type.

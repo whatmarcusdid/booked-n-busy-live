@@ -21,36 +21,29 @@ const AUDIT_STATES = [
 type AuditState = (typeof AUDIT_STATES)[number];
 
 const PILLARS = [
-  { key: "visibility", name: "Online Visibility" },
-  { key: "engagement", name: "User Engagement" },
-  { key: "conversion", name: "Conversion Optimization" },
-  { key: "trust", name: "Trust & Credibility" },
+  { key: "trust_signals", name: "Trust Signals" },
+  { key: "lead_conversion", name: "Lead Conversion" },
+  { key: "growth_infrastructure", name: "Growth Infrastructure" },
 ] as const;
 
 const CRITERIA_BY_PILLAR = {
-  visibility: [
-    { key: "seo_basics", name: "SEO Fundamentals", weight: 0.3 },
-    { key: "mobile_friendly", name: "Mobile Responsiveness", weight: 0.25 },
-    { key: "page_speed", name: "Page Load Speed", weight: 0.25 },
-    { key: "local_seo", name: "Local SEO", weight: 0.2 },
+  trust_signals: [
+    { key: "professionalism", name: "Professional Appearance", weight: 0.3 },
+    { key: "credentials", name: "Credentials & Certifications", weight: 0.25 },
+    { key: "reviews_testimonials", name: "Reviews & Testimonials", weight: 0.25 },
+    { key: "security", name: "Security Indicators", weight: 0.2 },
   ],
-  engagement: [
-    { key: "content_quality", name: "Content Quality", weight: 0.3 },
-    { key: "visual_appeal", name: "Visual Design", weight: 0.25 },
-    { key: "navigation", name: "Navigation & UX", weight: 0.25 },
-    { key: "media_usage", name: "Media Usage", weight: 0.2 },
-  ],
-  conversion: [
+  lead_conversion: [
     { key: "cta_clarity", name: "Call-to-Action Clarity", weight: 0.3 },
     { key: "contact_forms", name: "Contact Forms", weight: 0.25 },
     { key: "conversion_paths", name: "Conversion Paths", weight: 0.25 },
     { key: "social_proof", name: "Social Proof", weight: 0.2 },
   ],
-  trust: [
-    { key: "professionalism", name: "Professional Appearance", weight: 0.3 },
-    { key: "credentials", name: "Credentials & Certifications", weight: 0.25 },
-    { key: "reviews_testimonials", name: "Reviews & Testimonials", weight: 0.25 },
-    { key: "security", name: "Security Indicators", weight: 0.2 },
+  growth_infrastructure: [
+    { key: "seo_basics", name: "SEO Fundamentals", weight: 0.3 },
+    { key: "mobile_friendly", name: "Mobile Responsiveness", weight: 0.25 },
+    { key: "page_speed", name: "Page Load Speed", weight: 0.25 },
+    { key: "local_seo", name: "Local SEO", weight: 0.2 },
   ],
 };
 
@@ -235,7 +228,7 @@ async function createMockReport(auditId: string) {
       audit_id: auditId,
       revision_number: 1,
       overall_score: overallScore,
-      executive_summary: `This website diagnostic reveals an overall performance score of ${Math.round(overallScore * 100)}%. Key areas for improvement have been identified across visibility, engagement, conversion, and trust pillars.`,
+      executive_summary: `This website diagnostic reveals an overall performance score of ${Math.round(overallScore * 100)}%. Key areas for improvement have been identified across trust signals, lead conversion, and growth infrastructure.`,
       publication_status: "review_required",
       metadata: { mock: true },
     })
@@ -264,7 +257,7 @@ async function createMockRecommendations(
       title: "Improve Mobile Responsiveness",
       description:
         "Your website needs optimization for mobile devices. Consider implementing responsive design patterns to ensure a consistent experience across all screen sizes.",
-      pillar: "visibility",
+      pillar: "growth_infrastructure",
       estimated_impact: "high",
       implementation_difficulty: "medium",
       sort_order: 1,
@@ -274,7 +267,7 @@ async function createMockRecommendations(
       title: "Add Clear Call-to-Action Buttons",
       description:
         "Make it easier for visitors to take action by adding prominent, well-placed call-to-action buttons on key pages.",
-      pillar: "conversion",
+      pillar: "lead_conversion",
       estimated_impact: "high",
       implementation_difficulty: "low",
       sort_order: 2,
@@ -284,7 +277,7 @@ async function createMockRecommendations(
       title: "Optimize Page Load Speed",
       description:
         "Reduce page load times by optimizing images, minimizing CSS/JS, and leveraging browser caching.",
-      pillar: "visibility",
+      pillar: "growth_infrastructure",
       estimated_impact: "medium",
       implementation_difficulty: "medium",
       sort_order: 3,

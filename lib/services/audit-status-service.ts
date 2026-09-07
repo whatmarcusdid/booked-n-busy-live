@@ -1,5 +1,5 @@
 import { createAdminClient } from "../supabase/admin";
-import { sha256Hash } from "../crypto";
+import { hmacSha256 } from "../crypto";
 import {
   getProgressInfo,
   type AuditStatusResponse,
@@ -23,7 +23,7 @@ export async function getAuditStatus(
     const supabase = createAdminClient();
 
     // Hash the token to find the audit
-    const tokenHash = sha256Hash(publicStatusToken);
+    const tokenHash = hmacSha256(publicStatusToken);
 
     // Get audit with related data
     const { data: audit, error: auditError } = await supabase

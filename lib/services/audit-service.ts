@@ -1,6 +1,6 @@
 import { createAdminClient } from "../supabase/admin";
 import { hashEmail } from "../crypto";
-import { generateSecureToken, sha256Hash } from "../crypto";
+import { generateSecureToken, hmacSha256 } from "../crypto";
 import type { AuditSubmission } from "../schemas/audit-submission";
 
 export interface CreateAuditResult {
@@ -28,7 +28,7 @@ export async function createAudit(
 
     // Generate secure token and hash it
     const publicStatusToken = generateSecureToken(32);
-    const publicStatusTokenHash = sha256Hash(publicStatusToken);
+    const publicStatusTokenHash = hmacSha256(publicStatusToken);
 
     // Hash email for deduplication
     const emailHash = hashEmail(data.email);
