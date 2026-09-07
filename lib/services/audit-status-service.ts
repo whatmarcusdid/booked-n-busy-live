@@ -5,6 +5,8 @@ import {
   type AuditStatusResponse,
 } from "../schemas/audit-status";
 
+type AuditReport = NonNullable<AuditStatusResponse["report"]>;
+
 export interface AuditStatusError {
   error: string;
   code: "NOT_FOUND" | "INVALID_TOKEN" | "SERVER_ERROR";
@@ -93,7 +95,8 @@ export async function getAuditStatus(
 
         response.report = {
           overallScore: Number(report.overall_score),
-          publicationStatus: report.publication_status as AuditStatusResponse["report"]["publicationStatus"],
+          publicationStatus:
+            report.publication_status as AuditReport["publicationStatus"],
           pillars: pillars?.map((p) => ({
             key: p.pillar_key,
             name: p.pillar_name,

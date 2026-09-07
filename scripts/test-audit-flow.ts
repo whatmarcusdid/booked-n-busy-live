@@ -9,8 +9,9 @@ import { getAuditStatus } from "../lib/services/audit-status-service";
 import { generateSecureToken, sha256Hash } from "../lib/crypto";
 import type { AuditSubmission } from "../lib/schemas/audit-submission";
 
-// Set environment to development
-process.env.NODE_ENV = "development";
+// Set environment to development without assigning the read-only NODE_ENV type.
+const env = process.env as { NODE_ENV?: string };
+env.NODE_ENV = "development";
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
