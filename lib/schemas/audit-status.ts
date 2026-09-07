@@ -131,6 +131,10 @@ export function getProgressInfo(status: string): {
       percentage: 100,
       step: "Audit could not be completed",
     },
+    // TODO(PRD decision #10 / supported-site-policy): 'unsupported' is allowed
+    // by the DB CHECK and API enum, but has no progress copy here and falls
+    // back to 'submitted'. Address when audits can actually be marked
+    // unsupported. Nothing currently produces that state.
   };
 
   const info = statusMap[status] || statusMap.submitted;
@@ -144,6 +148,11 @@ export function getProgressInfo(status: string): {
 
 /**
  * Check if a status is terminal (no further processing)
+ *
+ * TODO(PRD decision #10 / supported-site-policy): 'unsupported' is a valid
+ * audits.current_state in the DB CHECK and API enum, but is not treated as
+ * terminal here. Leave this until the supported-site-policy work — nothing
+ * currently produces an 'unsupported' audit.
  */
 export function isTerminalState(status: string): boolean {
   return (
