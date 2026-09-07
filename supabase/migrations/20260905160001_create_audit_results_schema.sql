@@ -3,7 +3,7 @@
 
 -- audit_pages table: discovered pages during crawl
 CREATE TABLE IF NOT EXISTS audit_pages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   audit_id UUID NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
   page_type TEXT NOT NULL,
@@ -19,7 +19,7 @@ CREATE INDEX idx_audit_pages_page_type ON audit_pages(page_type);
 
 -- evidence table: screenshots and other evidence collected
 CREATE TABLE IF NOT EXISTS evidence (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   audit_id UUID NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
   evidence_type TEXT NOT NULL,
   url TEXT,
@@ -34,7 +34,7 @@ CREATE INDEX idx_evidence_type ON evidence(evidence_type);
 
 -- criterion_results table: individual criterion scores
 CREATE TABLE IF NOT EXISTS criterion_results (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   audit_id UUID NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
   criterion_key TEXT NOT NULL,
   criterion_name TEXT NOT NULL,
@@ -52,7 +52,7 @@ CREATE INDEX idx_criterion_results_pillar ON criterion_results(pillar);
 
 -- pillar_results table: aggregated pillar scores
 CREATE TABLE IF NOT EXISTS pillar_results (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   audit_id UUID NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
   pillar_key TEXT NOT NULL,
   pillar_name TEXT NOT NULL,
@@ -67,7 +67,7 @@ CREATE INDEX idx_pillar_results_audit_id ON pillar_results(audit_id);
 
 -- report_revisions table: generated report versions
 CREATE TABLE IF NOT EXISTS report_revisions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   audit_id UUID NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
   revision_number INTEGER NOT NULL,
   overall_score NUMERIC(3,2) NOT NULL CHECK (overall_score >= 0 AND overall_score <= 1),
@@ -84,7 +84,7 @@ CREATE INDEX idx_report_revisions_publication_status ON report_revisions(publica
 
 -- recommendations table: actionable recommendations
 CREATE TABLE IF NOT EXISTS recommendations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   audit_id UUID NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
   report_revision_id UUID REFERENCES report_revisions(id) ON DELETE CASCADE,
   priority TEXT NOT NULL,

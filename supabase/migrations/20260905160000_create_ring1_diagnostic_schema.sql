@@ -2,12 +2,11 @@
 -- This migration creates the core tables for the website diagnostic workflow
 
 -- Enable necessary extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- leads table: stores lead information with hashed email for deduplication
 CREATE TABLE IF NOT EXISTS leads (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email_hash TEXT NOT NULL UNIQUE,
   first_name TEXT NOT NULL,
   business_name TEXT,
@@ -23,7 +22,7 @@ CREATE INDEX idx_leads_created_at ON leads(created_at DESC);
 
 -- audits table: stores website audit requests
 CREATE TABLE IF NOT EXISTS audits (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
   website_url TEXT NOT NULL,
   business_name TEXT NOT NULL,
@@ -52,7 +51,7 @@ CREATE INDEX idx_audits_created_at ON audits(created_at DESC);
 
 -- audit_state_transitions table: tracks state changes for audits
 CREATE TABLE IF NOT EXISTS audit_state_transitions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   audit_id UUID NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
   from_state TEXT,
   to_state TEXT NOT NULL,
@@ -65,7 +64,7 @@ CREATE INDEX idx_audit_state_transitions_transitioned_at ON audit_state_transiti
 
 -- audit_events table: stores events related to audits
 CREATE TABLE IF NOT EXISTS audit_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   audit_id UUID NOT NULL REFERENCES audits(id) ON DELETE CASCADE,
   event_type TEXT NOT NULL,
   event_data JSONB,
