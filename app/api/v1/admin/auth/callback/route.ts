@@ -13,7 +13,9 @@ export async function GET(request: NextRequest) {
   const consumed = await consumeAdminMagicLink(token, createSupabaseAdminStore());
   const email = consumed ? emailFromHash(consumed.emailHash) : null;
   if (!email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const failed = new URL("/admin", request.url);
+    failed.searchParams.set("error", "invalid_or_expired");
+    return NextResponse.redirect(failed);
   }
 
   const expires = new Date(Date.now() + ADMIN_SESSION_TTL_MS);

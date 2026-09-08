@@ -4,6 +4,8 @@ import { generateSecureToken, hashEmail, hmacSha256, sha256Hex } from "../crypto
 export const ADMIN_SESSION_COOKIE = "bnb_admin_session";
 export const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 export const ADMIN_MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
+/** Floor for /auth/request so allow-list misses are not faster than sends. */
+export const ADMIN_AUTH_MIN_RESPONSE_MS_DEFAULT = 250;
 
 export function adminAllowList(
   raw: string | undefined = process.env.ADMIN_ALLOWED_EMAILS,
@@ -82,6 +84,49 @@ export function hashMagicLinkToken(token: string): string {
 
 export function hashAdminEmail(email: string): string {
   return hashEmail(email);
+}
+
+/**
+ * Host used in emailed magic-link hrefs. Prefer ADMIN_APP_ORIGIN when set.
+ * Otherwise use the incoming request origin, mapping 127.0.0.1 → localhost
+ * so the session cookie is issued for the host Marcus actually browses.
+ */
+export function adminPublicOrigin(requestOrigin: string): string {
+  const configured = process.env.ADMIN_APP_ORIGIN?.trim().replace(/\/$/, "");
+  if (configured) return configured;
+  try {
+    const url = new URL(requestOrigin);
+    if (url.hostname === "127.0.0.1") {
+      url.hostname = "localhost";
+    }
+    return url.origin;
+  } catch {
+    return requestOrigin;
+  }
+}
+
+export function adminAuthMinResponseMs(
+  raw: string | undefined = process.env.ADMIN_AUTH_MIN_RESPONSE_MS,
+): number {
+  if (raw === undefined || raw === "") return ADMIN_AUTH_MIN_RESPONSE_MS_DEFAULT;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return ADMIN_AUTH_MIN_RESPONSE_MS_DEFAULT;
+  }
+  return parsed;
+}
+
+export async function padToMinimumElapsed(
+  startedAtMs: number,
+  minMs: number = adminAuthMinResponseMs(),
+  now: number = Date.now(),
+  sleep: (ms: number) => Promise<void> = (ms) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    }),
+): Promise<void> {
+  const remaining = minMs - (now - startedAtMs);
+  if (remaining > 0) await sleep(remaining);
 }
 
 export function sessionCookieOptions(expires: Date) {
