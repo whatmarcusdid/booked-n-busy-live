@@ -1,0 +1,32 @@
+{
+  "fixtureVersion": 1,
+  "rubricVersion": "v2",
+  "expectedAuditOutcome": "complete",
+  "expectedCriterionOutcomes": {
+    "license_insurance": "pass",
+    "service_area_clarity": "pass",
+    "reviews_above_fold": "pass",
+    "key_person_credibility": "pass",
+    "phone_cta_visibility": "pass",
+    "quote_booking_cta_visibility": "pass",
+    "website_performance": "pass",
+    "process_clarity": "pass",
+    "seo_ai_search_readiness": "pass",
+    "security_health": "pass",
+    "faq_common_concerns": "pass",
+    "offer_differentiation": "pass"
+  },
+  "expectedPillarScores": {
+    "trust_signals": 0.87,
+    "lead_conversion": 1,
+    "growth_infrastructure": 1
+  },
+  "expectedAssessmentCoverage": {
+    "trust_signals": { "assessed": 4, "not_assessed": 0 },
+    "lead_conversion": { "assessed": 4, "not_assessed": 0 },
+    "growth_infrastructure": { "assessed": 4, "not_assessed": 0 }
+  },
+  "expectedRecommendations": [],
+  "humanReviewRequired": false,
+  "publicationValidation": { "eligible": true }
+}

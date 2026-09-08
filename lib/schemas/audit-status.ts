@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  ACCESS_DENIED_CUSTOMER_MESSAGE,
+  isTargetAccessDenied,
+} from "../browserless/reasons";
 
 /**
  * Customer-safe audit status response schema
@@ -33,7 +37,7 @@ export const auditStatusResponseSchema = z.object({
   completedAt: z.string().optional(),
   report: z
     .object({
-      overallScore: z.number().min(0).max(1),
+      overallScore: z.number().min(0).max(1).nullable(),
       publicationStatus: z.enum([
         "draft",
         "review_required",
@@ -47,7 +51,7 @@ export const auditStatusResponseSchema = z.object({
           z.object({
             key: z.string(),
             name: z.string(),
-            score: z.number().min(0).max(1),
+            score: z.number().min(0).max(1).nullable(),
           }),
         )
         .optional(),
@@ -66,14 +70,29 @@ export const auditStatusResponseSchema = z.object({
 
 export type AuditStatusResponse = z.infer<typeof auditStatusResponseSchema>;
 
+export interface ProgressDiagnosticHint {
+  failureType?: string | null;
+  httpStatus?: number | null;
+}
+
 /**
  * Map internal state to customer-facing progress
  */
-export function getProgressInfo(status: string): {
+export function getProgressInfo(
+  status: string,
+  diagnostic?: ProgressDiagnosticHint,
+): {
   percentage: number;
   currentStep: string;
   estimatedTimeRemaining?: string;
 } {
+  const unsupportedStep = isTargetAccessDenied(
+    diagnostic?.failureType,
+    diagnostic?.httpStatus,
+  )
+    ? ACCESS_DENIED_CUSTOMER_MESSAGE
+    : "This website type is not supported";
+
   const statusMap: Record<
     string,
     { percentage: number; step: string; eta?: string }
@@ -131,10 +150,10 @@ export function getProgressInfo(status: string): {
       percentage: 100,
       step: "Audit could not be completed",
     },
-    // TODO(PRD decision #10 / supported-site-policy): 'unsupported' is allowed
-    // by the DB CHECK and API enum, but has no progress copy here and falls
-    // back to 'submitted'. Address when audits can actually be marked
-    // unsupported. Nothing currently produces that state.
+    unsupported: {
+      percentage: 100,
+      step: unsupportedStep,
+    },
   };
 
   const info = statusMap[status] || statusMap.submitted;
@@ -148,11 +167,6 @@ export function getProgressInfo(status: string): {
 
 /**
  * Check if a status is terminal (no further processing)
- *
- * TODO(PRD decision #10 / supported-site-policy): 'unsupported' is a valid
- * audits.current_state in the DB CHECK and API enum, but is not treated as
- * terminal here. Leave this until the supported-site-policy work — nothing
- * currently produces an 'unsupported' audit.
  */
 export function isTerminalState(status: string): boolean {
   return (
@@ -160,6 +174,7 @@ export function isTerminalState(status: string): boolean {
     status === "partial" ||
     status === "needs_review" ||
     status === "failed" ||
+    status === "unsupported" ||
     status === "expired"
   );
 }

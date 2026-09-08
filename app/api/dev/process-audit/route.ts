@@ -1,13 +1,13 @@
 /**
- * Development-only endpoint to trigger mock audit processing
- * DO NOT DEPLOY TO PRODUCTION
+ * Development-only manual trigger for the same workflow POST /api/v1/audits starts.
+ * Production traffic should not use this route — submission is the real trigger.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { processMockAudit } from "@/lib/services/mock-audit-processor";
+import { startAuditWorkflow } from "@/lib/audit-workflow/start";
+import { createSupabaseAuditStore } from "@/lib/audit-workflow/store";
 
 export async function POST(request: NextRequest) {
-  // Block in production
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json(
       {
@@ -30,10 +30,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process audit asynchronously (don't await in production-like scenario)
-    processMockAudit(auditId).catch((error) => {
-      console.error(`Error processing audit ${auditId}:`, error);
+    const store = createSupabaseAuditStore();
+    const audit = await store.getAudit(auditId);
+    if (!audit) {
+      return NextResponse.json({ error: "Audit not found" }, { status: 404 });
+    }
+
+    const started = await startAuditWorkflow({
+      auditId,
+      websiteUrl: audit.website_url,
     });
+
+    if (!started.started) {
+      return NextResponse.json(
+        {
+          error: "A workflow is already active for this audit",
+          auditId,
+        },
+        { status: 409 },
+      );
+    }
 
     return NextResponse.json(
       {

@@ -2,6 +2,8 @@ import { createAdminClient } from "../supabase/admin";
 import { hashEmail } from "../crypto";
 import { generateSecureToken, hmacSha256 } from "../crypto";
 import type { AuditSubmission } from "../schemas/audit-submission";
+import { startAuditWorkflow } from "../audit-workflow/start";
+import { hashIdempotencyKey } from "../audit-workflow/store";
 
 export interface CreateAuditResult {
   auditId: string;
@@ -15,25 +17,35 @@ export interface CreateAuditError {
   details?: unknown;
 }
 
+function issueStatusUrl(): { token: string; tokenHash: string; statusUrl: string } {
+  const token = generateSecureToken(32);
+  return {
+    token,
+    tokenHash: hmacSha256(token),
+    statusUrl: `/audit/status/${token}`,
+  };
+}
+
 /**
- * Create an audit with lead information
- * Uses database RPC function to ensure atomicity
+ * Create an audit with lead information.
+ * Uses create_audit_with_lead so lead + audit + first transition are atomic.
+ * Idempotency is enforced by audits.idempotency_key_hash (unique when present).
  */
 export async function createAudit(
   data: AuditSubmission,
   normalizedUrl: string,
+  options?: { idempotencyKey?: string },
 ): Promise<CreateAuditResult | CreateAuditError> {
   try {
+    const idempotencyKey = options?.idempotencyKey?.trim();
+    const idempotencyKeyHash = idempotencyKey
+      ? hashIdempotencyKey(idempotencyKey)
+      : null;
+
     const supabase = createAdminClient();
-
-    // Generate secure token and hash it
-    const publicStatusToken = generateSecureToken(32);
-    const publicStatusTokenHash = hmacSha256(publicStatusToken);
-
-    // Hash email for deduplication
+    const issued = issueStatusUrl();
     const emailHash = hashEmail(data.email);
 
-    // Call database function to create audit atomically
     const { data: result, error } = await supabase.rpc(
       "create_audit_with_lead",
       {
@@ -56,7 +68,8 @@ export async function createAudit(
         p_utm_term: data.attribution?.utmTerm || null,
         p_utm_content: data.attribution?.utmContent || null,
         p_landing_variant: data.attribution?.landingVariant || null,
-        p_public_status_token_hash: publicStatusTokenHash,
+        p_public_status_token_hash: issued.tokenHash,
+        p_idempotency_key_hash: idempotencyKeyHash,
       },
     );
 
@@ -76,21 +89,43 @@ export async function createAudit(
 
     const auditRecord = result[0];
 
-    // TODO: Initiate Vercel Workflow here
-    // This is where we would trigger the diagnostic workflow
-    // Example: await triggerDiagnosticWorkflow(auditRecord.audit_id, normalizedUrl);
+    if (auditRecord.is_new_audit === false) {
+      const replay = issueStatusUrl();
+      const { error: rotateError } = await supabase
+        .from("audits")
+        .update({ public_status_token_hash: replay.tokenHash })
+        .eq("id", auditRecord.audit_id);
 
-    // Development-only: Auto-trigger mock processor (optional)
-    // Uncomment to automatically process audits in development:
-    // if (process.env.NODE_ENV === "development") {
-    //   const { processMockAudit } = await import("./mock-audit-processor");
-    //   processMockAudit(auditRecord.audit_id).catch(console.error);
-    // }
+      if (rotateError) {
+        console.error("Failed to rotate status token hash:", rotateError);
+        return {
+          error: "Failed to create audit",
+          details:
+            process.env.NODE_ENV === "development" ? rotateError : undefined,
+        };
+      }
+
+      return {
+        auditId: auditRecord.audit_id,
+        status: "submitted",
+        statusUrl: replay.statusUrl,
+        duplicate: true,
+      };
+    }
+
+    try {
+      await startAuditWorkflow({
+        auditId: auditRecord.audit_id,
+        websiteUrl: normalizedUrl,
+      });
+    } catch (workflowError) {
+      console.error("Failed to start audit workflow:", workflowError);
+    }
 
     return {
       auditId: auditRecord.audit_id,
       status: "submitted",
-      statusUrl: `/audit/status/${publicStatusToken}`,
+      statusUrl: issued.statusUrl,
       duplicate: !auditRecord.is_new_lead,
     };
   } catch (error) {

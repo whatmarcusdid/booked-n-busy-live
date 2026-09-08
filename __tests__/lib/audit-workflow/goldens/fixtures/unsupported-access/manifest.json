@@ -1,0 +1,32 @@
+{
+  "fixtureVersion": 1,
+  "rubricVersion": "v2",
+  "expectedAuditOutcome": "unsupported",
+  "expectedCriterionOutcomes": {
+    "license_insurance": "not_assessed",
+    "service_area_clarity": "not_assessed",
+    "reviews_above_fold": "pass",
+    "key_person_credibility": "pass",
+    "phone_cta_visibility": "not_assessed",
+    "quote_booking_cta_visibility": "not_assessed",
+    "website_performance": "not_assessed",
+    "process_clarity": "not_assessed",
+    "seo_ai_search_readiness": "not_assessed",
+    "security_health": "not_assessed",
+    "faq_common_concerns": "not_assessed",
+    "offer_differentiation": "not_assessed"
+  },
+  "expectedPillarScores": {
+    "trust_signals": 0.8,
+    "lead_conversion": null,
+    "growth_infrastructure": null
+  },
+  "expectedAssessmentCoverage": {
+    "trust_signals": { "assessed": 2, "not_assessed": 2 },
+    "lead_conversion": { "assessed": 0, "not_assessed": 4 },
+    "growth_infrastructure": { "assessed": 0, "not_assessed": 4 }
+  },
+  "expectedRecommendations": [],
+  "humanReviewRequired": false,
+  "publicationValidation": { "eligible": false, "reason": "no_report" }
+}

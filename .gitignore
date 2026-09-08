@@ -41,3 +41,4 @@ yarn-error.log*
 # local supabase CLI state
 supabase/.branches/
 supabase/.temp/
+/.swc

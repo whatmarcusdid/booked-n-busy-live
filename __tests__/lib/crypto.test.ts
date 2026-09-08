@@ -1,4 +1,4 @@
-import { generateSecureToken, hmacSha256, hashEmail } from "@/lib/crypto";
+import { generateSecureToken, hmacSha256, hashEmail, sha256Hex } from "@/lib/crypto";
 
 describe("Crypto utilities", () => {
   describe("generateSecureToken", () => {
@@ -52,6 +52,15 @@ describe("Crypto utilities", () => {
       } finally {
         process.env.DATA_HASH_SECRET = original;
       }
+    });
+  });
+
+  describe("sha256Hex", () => {
+    it("returns a 64-char hex digest that does not need DATA_HASH_SECRET", () => {
+      const digest = sha256Hex("report-token");
+      expect(digest).toMatch(/^[a-f0-9]{64}$/);
+      expect(sha256Hex("report-token")).toBe(digest);
+      expect(sha256Hex("other")).not.toBe(digest);
     });
   });
 

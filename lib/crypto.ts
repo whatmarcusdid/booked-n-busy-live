@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from "crypto";
+import { createHash, createHmac, randomBytes } from "crypto";
 
 function getDataHashSecret(): string {
   const secret = process.env.DATA_HASH_SECRET;
@@ -20,9 +20,18 @@ export function generateSecureToken(byteLength = 32): string {
 
 /**
  * HMAC-SHA-256 keyed by DATA_HASH_SECRET. Server-only.
+ * Used for status tokens and email hashes — not for public report tokens.
  */
 export function hmacSha256(input: string): string {
   return createHmac("sha256", getDataHashSecret()).update(input).digest("hex");
+}
+
+/**
+ * Unkeyed SHA-256 hex digest. Public report tokens are stored as
+ * SHA-256(token) so a leaked DB row is not the URL token.
+ */
+export function sha256Hex(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
 }
 
 /**

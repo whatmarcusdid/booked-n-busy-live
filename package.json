@@ -15,9 +15,11 @@
     "@supabase/supabase-js": "^2.115.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "ai": "^7.0.93",
     "next": "^16.3.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "workflow": "^4.8.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

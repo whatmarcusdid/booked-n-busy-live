@@ -46,8 +46,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create audit
-    const result = await createAudit(validatedData, urlResult.url);
+    const idempotencyKey = request.headers.get("Idempotency-Key") ?? undefined;
+
+    // Create audit and enqueue the durable workflow
+    const result = await createAudit(validatedData, urlResult.url, {
+      idempotencyKey,
+    });
 
     // Check for errors
     if (!result) {

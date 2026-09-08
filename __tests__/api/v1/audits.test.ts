@@ -185,6 +185,7 @@ describe("POST /api/v1/audits", () => {
         websiteUrl: "example.com",
       }),
       "https://example.com",
+      expect.objectContaining({ idempotencyKey: undefined }),
     );
   });
 
@@ -212,6 +213,31 @@ describe("POST /api/v1/audits", () => {
         websiteUrl: "http://example.com",
       }),
       "http://example.com",
+      expect.objectContaining({ idempotencyKey: undefined }),
+    );
+  });
+
+  it("should pass Idempotency-Key through to createAudit", async () => {
+    mockCreateAudit.mockResolvedValue({
+      auditId: "test-audit-id",
+      status: "submitted",
+      statusUrl: "/audit/status/test-token",
+      duplicate: false,
+    });
+
+    const request = new NextRequest("http://localhost:3000/api/v1/audits", {
+      method: "POST",
+      headers: { "Idempotency-Key": "replay-me" },
+      body: JSON.stringify(validPayload),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(202);
+    expect(mockCreateAudit).toHaveBeenCalledWith(
+      expect.any(Object),
+      "https://example.com",
+      { idempotencyKey: "replay-me" },
     );
   });
 

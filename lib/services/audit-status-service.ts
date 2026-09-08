@@ -2,10 +2,39 @@ import { createAdminClient } from "../supabase/admin";
 import { hmacSha256 } from "../crypto";
 import {
   getProgressInfo,
+  isTerminalState,
   type AuditStatusResponse,
+  type ProgressDiagnosticHint,
 } from "../schemas/audit-status";
 
 type AuditReport = NonNullable<AuditStatusResponse["report"]>;
+type AdminClient = ReturnType<typeof createAdminClient>;
+
+async function loadUnsupportedProgressHint(
+  supabase: AdminClient,
+  auditId: string,
+): Promise<ProgressDiagnosticHint | undefined> {
+  const { data: homePage } = await supabase
+    .from("audit_pages")
+    .select("metadata")
+    .eq("audit_id", auditId)
+    .eq("page_type", "home")
+    .maybeSingle();
+
+  const metadata = homePage?.metadata as Record<string, unknown> | null;
+  if (!metadata) return undefined;
+
+  return {
+    failureType:
+      typeof metadata.failure_type === "string"
+        ? metadata.failure_type
+        : undefined,
+    httpStatus:
+      typeof metadata.http_status === "number"
+        ? metadata.http_status
+        : undefined,
+  };
+}
 
 export interface AuditStatusError {
   error: string;
@@ -48,19 +77,31 @@ export async function getAuditStatus(
       };
     }
 
+    const progressHint =
+      audit.current_state === "unsupported"
+        ? await loadUnsupportedProgressHint(supabase, audit.id)
+        : undefined;
+
     // Build base response
     const response: AuditStatusResponse = {
       auditId: audit.id,
       status: audit.current_state as AuditStatusResponse["status"],
-      progress: getProgressInfo(audit.current_state),
+      progress: getProgressInfo(audit.current_state, progressHint),
       websiteUrl: audit.website_url,
       businessName: audit.business_name,
       submittedAt: audit.created_at,
     };
 
     // If complete, add report data
-    if (audit.current_state === "complete") {
+    if (isTerminalState(audit.current_state)) {
       response.completedAt = audit.updated_at;
+    }
+
+    if (
+      audit.current_state === "complete" ||
+      audit.current_state === "partial" ||
+      audit.current_state === "needs_review"
+    ) {
 
       // Get report revision
       const { data: report } = await supabase
@@ -94,13 +135,14 @@ export async function getAuditStatus(
           .limit(3);
 
         response.report = {
-          overallScore: Number(report.overall_score),
+          overallScore:
+            report.overall_score == null ? null : Number(report.overall_score),
           publicationStatus:
             report.publication_status as AuditReport["publicationStatus"],
           pillars: pillars?.map((p) => ({
             key: p.pillar_key,
             name: p.pillar_name,
-            score: Number(p.score),
+            score: p.score == null ? null : Number(p.score),
           })),
           topRecommendations: recommendations?.map((r) => ({
             priority: r.priority,
