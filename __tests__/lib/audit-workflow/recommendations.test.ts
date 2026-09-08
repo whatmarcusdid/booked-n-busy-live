@@ -4,6 +4,7 @@ import {
   outcomeFromMockScore,
   selectRecommendations,
 } from "@/lib/audit-workflow/recommendations";
+import { isRealHomeCheck } from "@/lib/audit-workflow/rubric/model";
 import type { CriterionInput } from "@/lib/audit-workflow/store";
 
 function row(
@@ -52,6 +53,42 @@ describe("deterministic recommendation selection", () => {
       priority: "fix_first",
       evidence_ids: ["ev-phone"],
     });
+  });
+
+  it("keeps the selected set real and evidence-backed when mock checks are not fail/partial", () => {
+    const selected = selectRecommendations([
+      {
+        criterion_key: "reviews_above_fold",
+        criterion_name: "Reviews Above the Fold",
+        pillar: "trust_signals",
+        score: 0.86,
+        weight: 0.25,
+        findings: { assessed: true, outcome: "pass", mock: true },
+      },
+      {
+        criterion_key: "key_person_credibility",
+        criterion_name: "Key-Person / Local Credibility",
+        pillar: "trust_signals",
+        score: 0.67,
+        weight: 0.25,
+        findings: { assessed: true, outcome: "pass", mock: true },
+      },
+      row("license_insurance", "License", "trust_signals", "fail", {
+        evidence_ids: ["ev-license"],
+      }),
+      row("phone_cta_visibility", "Phone", "lead_conversion", "fail", {
+        evidence_ids: ["ev-phone"],
+      }),
+    ]);
+
+    expect(selected.map((item) => item.criterion_key)).toEqual([
+      "license_insurance",
+      "phone_cta_visibility",
+    ]);
+    expect(selected.every((item) => isRealHomeCheck(item.criterion_key))).toBe(
+      true,
+    );
+    expect(selected.every((item) => item.evidence_ids.length > 0)).toBe(true);
   });
 
   it("ranks fail before partial, then Trust → Lead → Growth, then catalog order", () => {

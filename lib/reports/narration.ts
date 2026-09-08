@@ -1,9 +1,34 @@
 import { z } from "zod";
 import { isAiNarrationEnabled } from "../flags";
+import { isRealHomeCheck } from "../audit-workflow/rubric/model";
 import type { AssembledReport } from "./schema";
 
 export const NARRATION_MODEL = "anthropic/claude-haiku-4.5";
 export const NARRATION_TEMPERATURE = 0.2;
+
+/**
+ * Catalog keys still produced by the mock processor. Same source of truth as
+ * `mockKeysForAffectedPillars()` — anything not a real home check.
+ * Narration must never treat these as assessed facts.
+ */
+export function isMockNarrationCheck(key: string): boolean {
+  return !isRealHomeCheck(key);
+}
+
+const MOCK_CHECK_TOPIC_PATTERNS: Record<
+  string,
+  { pattern: RegExp; label: string }
+> = {
+  reviews_above_fold: {
+    pattern: /\b(reviews?|testimonials?)\b/i,
+    label: "reviews or testimonials",
+  },
+  key_person_credibility: {
+    pattern:
+      /\b(key[- ]person|owner\/founder|founder credibility|owner credibility|local credibility)\b/i,
+    label: "key-person or owner/founder credibility",
+  },
+};
 
 export const narrationOutputSchema = z.object({
   executiveSummary: z.string().min(1),
@@ -46,6 +71,10 @@ export interface NarrationEligibleInput {
     pillar: string;
     evidence_ids: string[];
   }>;
+  coverage: {
+    includedCheckKeys: string[];
+    note: string;
+  };
 }
 
 export type GenerateNarration = (
@@ -55,9 +84,27 @@ export type GenerateNarration = (
 
 const HTML_LIKE = /<\/?[a-z][\s\S]*>/i;
 
+function assembledChecksForNarration(assembled: AssembledReport) {
+  return assembled.pillars.flatMap((pillar) =>
+    pillar.checks
+      .filter((check) => !isMockNarrationCheck(check.key))
+      .map((check) => ({
+        key: check.key,
+        name: check.name,
+        pillar: pillar.key,
+        outcome: check.outcome,
+        assessed: check.assessed,
+        evidence_ids:
+          assembled.recommendations.find((row) => row.criterion_key === check.key)
+            ?.evidence_ids ?? [],
+      })),
+  );
+}
+
 export function buildNarrationInput(
   assembled: AssembledReport,
 ): NarrationEligibleInput {
+  const checks = assembledChecksForNarration(assembled);
   return {
     websiteUrl: assembled.websiteUrl,
     overallScore: assembled.overallScore,
@@ -69,24 +116,17 @@ export function buildNarrationInput(
       display: pillar.display,
       assessedCount: pillar.assessedCount,
     })),
-    checks: assembled.pillars.flatMap((pillar) =>
-      pillar.checks.map((check) => ({
-        key: check.key,
-        name: check.name,
-        pillar: pillar.key,
-        outcome: check.outcome,
-        assessed: check.assessed,
-        evidence_ids:
-          assembled.recommendations.find((row) => row.criterion_key === check.key)
-            ?.evidence_ids ?? [],
-      })),
-    ),
+    checks,
     recommendations: assembled.recommendations.map((row) => ({
       criterion_key: row.criterion_key,
       priority: row.priority,
       pillar: row.pillar,
       evidence_ids: row.evidence_ids,
     })),
+    coverage: {
+      includedCheckKeys: checks.map((check) => check.key),
+      note: "Describe only the checks in this payload. Pillar scores may include omitted mock checks — do not infer facts about omitted checks from a pillar score or overall score.",
+    },
   };
 }
 
@@ -139,6 +179,28 @@ export function validateNarrationAgainstAssembled(
       };
     }
   }
+  const includedKeys = new Set(
+    assembledChecksForNarration(assembled).map((check) => check.key),
+  );
+  return assertNoMockCheckTopics(output, includedKeys);
+}
+
+export function assertNoMockCheckTopics(
+  output: NarrationOutput,
+  includedCheckKeys: Set<string>,
+): { ok: true } | { ok: false; hint: string } {
+  const text = output.executiveSummary;
+  for (const [key, { pattern, label }] of Object.entries(
+    MOCK_CHECK_TOPIC_PATTERNS,
+  )) {
+    if (includedCheckKeys.has(key)) continue;
+    if (pattern.test(text)) {
+      return {
+        ok: false,
+        hint: `Do not mention ${label}. That check was not included in the findings and was not verified.`,
+      };
+    }
+  }
   return { ok: true };
 }
 
@@ -177,7 +239,7 @@ export async function generateNarrationViaGateway(
       schema: narrationOutputSchema,
     }),
     system:
-      "Rewrite the supplied audit findings into brief customer-facing copy. Use only the structured findings. Do not invent checks, scores, or evidence IDs. Every recommendation must include the evidence_ids you were given.",
+      "Rewrite the supplied audit findings into brief customer-facing copy. The checks array is the complete list of verified facts you may describe — do not mention any check or topic that is not in that list. Do not claim comprehensive coverage of a pillar, and do not generalize a pillar's health in a way that implies information about a check that was omitted. Pillar scores may include omitted checks; never infer facts about omitted checks from a pillar score. Do not mention reviews, testimonials, key-person identity, or owner/founder credibility unless those checks appear in findings.checks. Do not invent checks, scores, or evidence IDs. Every recommendation must include the evidence_ids you were given.",
     prompt: JSON.stringify({
       findings: input,
       validationHint: validationHint ?? null,
