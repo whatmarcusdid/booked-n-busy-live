@@ -1,3 +1,4 @@
+import { IntakeForm } from "./intake-form";
 import { getSupabaseStatus } from "@/lib/supabase/status";
 
 export const dynamic = "force-dynamic";
@@ -8,12 +9,14 @@ export default async function HomePage() {
   return (
     <main>
       <section className="card">
-        <p className="eyebrow">Booked N Busy Live</p>
-        <h1>Your booking site is live.</h1>
+        {/* TODO(figma): landing hero, trust strip, and intake visual system */}
+        <p className="eyebrow">Booked N Busy</p>
+        <h1>Free website diagnostic</h1>
         <p>
-          This Next.js app is deployed on Vercel. Next up: scheduling,
-          availability, and checkout.
+          Enter your site. We scan the homepage and return a short report you
+          can review before anything is published.
         </p>
+        <IntakeForm />
         <p
           className={`status ${
             status.configured && status.reachable ? "status-ok" : "status-wait"
