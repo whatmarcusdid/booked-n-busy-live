@@ -16,13 +16,22 @@ export const attributionSchema = z.object({
   landingVariant: z.string().optional(),
 });
 
+/** Blank or omitted strings become undefined — never a fake placeholder. */
+const optionalLeadText = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((value) => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  });
+
 export const auditSubmissionSchema = z.object({
   websiteUrl: z.string().min(1, "Website URL is required"),
   businessName: z.string().min(1, "Business name is required"),
   firstName: z.string().min(1, "First name is required"),
   email: z.string().email("Valid email is required"),
-  trade: z.string().min(1, "Trade is required"),
-  serviceArea: z.string().min(1, "Service area is required"),
+  trade: optionalLeadText,
+  serviceArea: optionalLeadText,
   phone: z.string().optional(),
   primaryConcern: z.string().optional(),
   teamSize: z.string().optional(),

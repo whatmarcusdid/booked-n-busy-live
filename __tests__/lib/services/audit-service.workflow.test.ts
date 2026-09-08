@@ -91,6 +91,18 @@ describe("createAudit workflow trigger", () => {
     );
   });
 
+  it("writes null trade and service area when those fields are omitted", async () => {
+    const { trade: _trade, serviceArea: _serviceArea, ...fourFields } = payload;
+    await createAudit(fourFields, "https://example.com");
+    expect(rpc).toHaveBeenCalledWith(
+      "create_audit_with_lead",
+      expect.objectContaining({
+        p_trade: null,
+        p_service_area: null,
+      }),
+    );
+  });
+
   it("does not start a second workflow and returns a fresh statusUrl on replay", async () => {
     rpc
       .mockResolvedValueOnce({

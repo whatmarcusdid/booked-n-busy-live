@@ -2,7 +2,13 @@ import { createAdminClient } from "../supabase/admin";
 import { publishReportRevision } from "../reports/publication";
 import type { AssembledReport } from "../reports/schema";
 import { validateReportForPublication } from "../reports/publication";
-import { hashAdminEmail, hashMagicLinkToken, issueMagicLinkToken } from "./auth";
+import { formatOptionalLeadField } from "../leads/display";
+import {
+  adminAllowList,
+  hashAdminEmail,
+  hashMagicLinkToken,
+  issueMagicLinkToken,
+} from "./auth";
 import type { TransactionalEmailProvider } from "../email/provider";
 
 export interface AdminAuditSummary {
@@ -127,6 +133,11 @@ export function createSupabaseAdminStore(): AdminStore {
         .eq("id", id)
         .maybeSingle();
       if (!audit) return null;
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("id, first_name, business_name, phone, trade, service_area")
+        .eq("id", audit.lead_id)
+        .maybeSingle();
       const [pages, evidence, criteria, pillars, reports, events, transitions] =
         await Promise.all([
           supabase.from("audit_pages").select("*").eq("audit_id", id),
@@ -143,6 +154,13 @@ export function createSupabaseAdminStore(): AdminStore {
         ]);
       return {
         audit,
+        lead: lead
+          ? {
+              ...lead,
+              trade_display: formatOptionalLeadField(lead.trade),
+              service_area_display: formatOptionalLeadField(lead.service_area),
+            }
+          : null,
         pages: pages.data ?? [],
         evidence: evidence.data ?? [],
         criteria: criteria.data ?? [],
@@ -236,21 +254,40 @@ export async function requestAdminMagicLink(input: {
   origin: string;
   now?: Date;
 }): Promise<void> {
-  if (!input.allowed) return;
+  const emailHash = hashAdminEmail(input.email);
+  if (!input.allowed) {
+    if (adminAllowList().size === 0) {
+      console.warn("admin magic-link: ADMIN_ALLOWED_EMAILS is unset", {
+        emailHash,
+      });
+    } else {
+      console.info("admin magic-link: email not on allow-list", { emailHash });
+    }
+    return;
+  }
   const issued = issueMagicLinkToken();
   const now = input.now ?? new Date();
   await input.store.insertMagicLink({
-    emailHash: hashAdminEmail(input.email),
+    emailHash,
     tokenHash: issued.tokenHash,
     expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
   });
-  await input.provider.send({
+  console.info("admin magic-link: row inserted", { emailHash });
+  const sent = await input.provider.send({
     to: input.email,
     subject: "Booked N Busy admin sign-in",
     text: `Sign in: ${input.origin}/api/v1/admin/auth/callback?token=${issued.token}`,
     html: `<p><a href="${input.origin}/api/v1/admin/auth/callback?token=${issued.token}">Sign in</a></p>`,
     idempotencyKey: `admin-login:${issued.tokenHash}`,
   });
+  if (!sent.ok) {
+    console.error("admin magic-link: provider send failed", {
+      emailHash,
+      error: sent.error,
+    });
+    return;
+  }
+  console.info("admin magic-link: provider send succeeded", { emailHash });
 }
 
 export async function consumeAdminMagicLink(

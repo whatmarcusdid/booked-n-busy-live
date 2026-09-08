@@ -241,6 +241,39 @@ describe("POST /api/v1/audits", () => {
     );
   });
 
+  it("accepts a 4-field payload with trade and serviceArea omitted", async () => {
+    mockCreateAudit.mockResolvedValue({
+      auditId: "test-audit-id",
+      status: "submitted",
+      statusUrl: "/audit/status/test-token",
+      duplicate: false,
+    });
+
+    const { trade: _trade, serviceArea: _serviceArea, ...fourFields } =
+      validPayload;
+    const request = new NextRequest("http://localhost:3000/api/v1/audits", {
+      method: "POST",
+      body: JSON.stringify(fourFields),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(202);
+    expect(mockCreateAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstName: "John",
+        businessName: "Test Business",
+        email: "john@example.com",
+        websiteUrl: "example.com",
+      }),
+      "https://example.com",
+      expect.anything(),
+    );
+    const submitted = mockCreateAudit.mock.calls[0][0];
+    expect(submitted.trade).toBeUndefined();
+    expect(submitted.serviceArea).toBeUndefined();
+  });
+
   it("should not expose sensitive data in error responses", async () => {
     mockCreateAudit.mockRejectedValue(new Error("Internal database error"));
 
