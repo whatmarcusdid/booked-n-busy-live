@@ -1,0 +1,59 @@
+/**
+ * Material 3 system tokens from the landing Figma (desktop hero pass).
+ * Override any --md-sys-color-* here, or on a page/section selector later.
+ * Do NOT generate these from Material Theme Builder / dynamic color.
+ */
+:root {
+  --md-sys-color-primary: #34d399;
+  --md-sys-color-on-primary: #0c0a28;
+  --md-sys-color-primary-container: #34d399;
+  --md-sys-color-on-primary-container: #0c0a28;
+
+  --md-sys-color-secondary: #737373;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #ffffff;
+  --md-sys-color-on-secondary-container: #0c0a28;
+
+  --md-sys-color-tertiary: #737373;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #ffffff;
+  --md-sys-color-on-tertiary-container: #0c0a28;
+
+  --md-sys-color-error: #b42318;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffffff;
+  --md-sys-color-on-error-container: #b42318;
+
+  --md-sys-color-background: #0c0a28;
+  --md-sys-color-on-background: #ffffff;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-on-surface: #0c0a28;
+  --md-sys-color-on-surface-variant: #737373;
+  --md-sys-color-surface-bright: #ffffff;
+  --md-sys-color-surface-dim: #0c0a28;
+  --md-sys-color-surface-container: #ffffff;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #ffffff;
+  --md-sys-color-surface-container-high: #ffffff;
+  --md-sys-color-surface-container-highest: #ffffff;
+  --md-sys-color-outline: #d4d4d4;
+  --md-sys-color-outline-variant: #d4d4d4;
+  --md-sys-color-shadow: #0c0a28;
+  --md-sys-color-scrim: #0c0a28;
+  --md-sys-color-inverse-surface: #ffffff;
+  --md-sys-color-inverse-on-surface: #0c0a28;
+  --md-sys-color-inverse-primary: #34d399;
+}
+
+/*
+ * @material/web has no stable <md-*-card> (card is still labs/roadmap).
+ * This surface follows Material Web's documented elevation pattern.
+ */
+.md-card {
+  position: relative;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+  --md-elevation-level: 1;
+}
