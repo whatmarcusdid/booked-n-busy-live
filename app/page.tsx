@@ -1,4 +1,5 @@
 import { IntakeForm } from "./intake-form";
+import { LandingStars } from "./landing-stars";
 import "./landing.css";
 
 export const dynamic = "force-dynamic";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 export default function HomePage() {
   return (
     <main className="landing">
+      <LandingStars />
       <nav className="landing-nav" aria-label="Primary">
         <a className="landing-logo" href="/">
           <span className="landing-logo-mark">
