@@ -1,19 +1,66 @@
-.landing {
+main.landing {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
-  display: block;
+  display: flex;
+  flex-direction: column;
   padding: 0;
   color: #ffffff;
   background-color: #0c0a28;
-  background-image: radial-gradient(
-    rgba(239, 246, 255, 0.3) 1px,
-    transparent 1px
-  );
-  background-size: 28px 28px;
+  background-image: none;
+}
+
+/*
+ * Individual DOM nodes (not a flattened canvas/image) so a later Figma
+ * Motion pass can address dots one-by-one.
+ */
+.landing-stars {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.landing-dot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  background: rgb(239, 246, 255);
+  opacity: 0.22;
+  animation-name: landing-twinkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes landing-twinkle {
+  0%,
+  100% {
+    opacity: 0.12;
+  }
+  50% {
+    opacity: 0.38;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-dot {
+    animation: none;
+    opacity: 0.3;
+  }
 }
 
 .landing p,
 .landing h1 {
   color: inherit;
+}
+
+.landing-nav,
+.landing-hero {
+  position: relative;
+  z-index: 1;
 }
 
 .landing-nav {
@@ -23,7 +70,7 @@
   width: 1344px;
   max-width: calc(100% - 96px);
   height: 51px;
-  margin: 48px auto 0;
+  margin: 48px auto 5rem;
   padding: 0;
 }
 
@@ -174,14 +221,39 @@
 .landing-form md-outlined-text-field {
   width: 100%;
   height: 44px;
+  background-color: #ffffff;
+  border-radius: 8px;
   --md-sys-color-surface: #ffffff;
   --md-outlined-text-field-container-shape: 8px;
+  --md-outlined-text-field-outline-color: #d4d4d4;
+  --md-outlined-text-field-hover-outline-color: #d4d4d4;
+  --md-outlined-text-field-label-text-color: #737373;
+  --md-outlined-text-field-hover-label-text-color: #737373;
+  --md-outlined-text-field-input-text-color: #0c0a28;
+  --md-outlined-text-field-input-text-placeholder-color: #737373;
+  --md-outlined-text-field-label-text-size: 16px;
+  --md-outlined-text-field-input-text-size: 16px;
+  --md-outlined-text-field-label-text-weight: 400;
+  --md-outlined-text-field-input-text-weight: 400;
+  --md-outlined-text-field-label-text-line-height: 1.45;
+  --md-outlined-text-field-input-text-line-height: 1.45;
+  --md-outlined-text-field-leading-space: 16px;
+  --md-outlined-text-field-trailing-space: 16px;
+  --md-outlined-text-field-label-text-font: Inter, ui-sans-serif, system-ui,
+    sans-serif;
+  --md-outlined-text-field-input-text-font: Inter, ui-sans-serif, system-ui,
+    sans-serif;
+  --md-outlined-field-label-text-font: Inter, ui-sans-serif, system-ui,
+    sans-serif;
+  --md-outlined-field-content-font: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 .landing-form md-filled-button {
   width: 100%;
   height: 44px;
   --md-filled-button-container-shape: 8px;
+  --md-filled-button-label-text-font: var(--font-ratch), sans-serif;
+  --md-filled-button-label-text-size: 16px;
 }
 
 .landing-disclaimer {
@@ -198,4 +270,74 @@
   margin: 0;
   color: #fca5a5;
   font-size: 14px;
+}
+
+/* Breakpoints: mobile 0–767 | tablet 768–1023 | desktop 1024+ (default). */
+@media (max-width: 767px) {
+  main.landing {
+    padding: 32px 24px;
+  }
+
+  .landing-nav {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .landing-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 44px;
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+
+  .landing-copy,
+  .landing-form {
+    width: 100%;
+  }
+
+  .landing-title {
+    font-size: 36px;
+  }
+}
+
+/* Tablet (Figma 29:8419). */
+@media (min-width: 768px) and (max-width: 1023px) {
+  main.landing {
+    padding: 48px;
+  }
+
+  .landing-nav {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  .landing-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 44px;
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+
+  .landing-copy,
+  .landing-form {
+    max-width: 500px;
+    width: 100%;
+  }
+
+  .landing-title {
+    font-size: 44px;
+  }
+
+  .landing-form md-filled-button {
+    width: auto;
+    min-width: 100px;
+  }
 }
