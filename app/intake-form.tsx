@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { MdFilledButton } from "@/lib/material/md-filled-button";
+import { MdOutlinedTextField } from "@/lib/material/md-outlined-text-field";
 
 export function IntakeForm() {
   const router = useRouter();
@@ -12,19 +14,24 @@ export function IntakeForm() {
     event.preventDefault();
     setError(null);
     setPending(true);
-    const form = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const named = (name: string) => {
+      const fromData = String(data.get(name) ?? "").trim();
+      if (fromData) return fromData;
+      const el = form.querySelector(`[name="${name}"]`) as
+        | { value?: string }
+        | null;
+      return String(el?.value ?? "").trim();
+    };
     const payload = {
-      websiteUrl: String(form.get("websiteUrl") ?? ""),
-      businessName: String(form.get("businessName") ?? ""),
-      firstName: String(form.get("firstName") ?? ""),
-      email: String(form.get("email") ?? ""),
-      trade: String(form.get("trade") ?? ""),
-      serviceArea: String(form.get("serviceArea") ?? ""),
-      phone: String(form.get("phone") ?? "") || undefined,
-      primaryConcern: String(form.get("primaryConcern") ?? "") || undefined,
+      websiteUrl: named("websiteUrl"),
+      businessName: named("businessName"),
+      firstName: named("firstName"),
+      email: named("email"),
       consent: {
-        reportDelivery: form.get("reportDelivery") === "on",
-        followUp: form.get("followUp") === "on",
+        reportDelivery: true,
+        followUp: false,
       },
     };
 
@@ -56,52 +63,40 @@ export function IntakeForm() {
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      {/* TODO(figma): replace this unstyled intake layout with the landing hero + form from Figma */}
-      <label>
-        Website URL
-        <input name="websiteUrl" required type="text" />
-      </label>
-      <label>
-        Business name
-        <input name="businessName" required type="text" />
-      </label>
-      <label>
-        First name
-        <input name="firstName" required type="text" />
-      </label>
-      <label>
-        Email
-        <input name="email" required type="email" />
-      </label>
-      <label>
-        Trade
-        <input name="trade" required type="text" />
-      </label>
-      <label>
-        Service area
-        <input name="serviceArea" required type="text" />
-      </label>
-      <label>
-        Phone
-        <input name="phone" type="text" />
-      </label>
-      <label>
-        Primary concern
-        <input name="primaryConcern" type="text" />
-      </label>
-      <label>
-        <input name="reportDelivery" type="checkbox" required />I want the
-        diagnostic report emailed to me
-      </label>
-      <label>
-        <input name="followUp" type="checkbox" />
-        Follow-up is okay
-      </label>
+    <form className="landing-form" onSubmit={onSubmit}>
+      <MdOutlinedTextField
+        name="firstName"
+        label="First name"
+        required
+        autocomplete="given-name"
+      />
+      <MdOutlinedTextField
+        name="businessName"
+        label="Business name"
+        required
+        autocomplete="organization"
+      />
+      <MdOutlinedTextField
+        name="email"
+        label="Email address"
+        type="email"
+        required
+        autocomplete="email"
+      />
+      <MdOutlinedTextField
+        name="websiteUrl"
+        label="Website URL"
+        required
+        autocomplete="url"
+      />
+      <MdFilledButton disabled={pending} type="submit">
+        {pending ? "Starting…" : "Run My Free Audit"}
+      </MdFilledButton>
+      <p className="landing-disclaimer">
+        No login required. Results in under 60 seconds. Your PDF report will be
+        emailed to you automatically.
+      </p>
       {error ? <p role="alert">{error}</p> : null}
-      <button disabled={pending} type="submit">
-        {pending ? "Starting…" : "Start diagnostic"}
-      </button>
     </form>
   );
 }
