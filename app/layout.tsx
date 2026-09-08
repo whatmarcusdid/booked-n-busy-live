@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ratch } from "./fonts/ratch";
 import "./globals.css";
+import "@/lib/material/tokens.css";
 
 export const metadata: Metadata = {
   title: "Booked N Busy Live",
@@ -14,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={ratch.variable}>
       <body>
         {children}
         <Analytics />
