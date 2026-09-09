@@ -91,6 +91,9 @@ describe("audits.idempotency_key_hash unique constraint", () => {
     const keyHash = `rpc-${randomUUID()}`;
     const shared = {
       p_email_hash: `rpc-email-${randomUUID()}`,
+      // Required since 20260909000000. PostgREST resolves on the exact
+      // parameter set, so omitting it is a "function not found", not a null.
+      p_email: `rpc-email-${randomUUID()}@example.com`,
       p_first_name: "Concurrent",
       p_business_name: "Concurrent Co",
       p_phone: null,

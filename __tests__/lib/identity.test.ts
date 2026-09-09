@@ -11,9 +11,23 @@ import {
   SUPPORT_EMAIL,
 } from "@/lib/identity";
 
-/** Files a customer can see: pages, components, public assets, emails. */
+/**
+ * Lowest plausible size of the customer-facing surface. The walk currently
+ * finds ~64 files; this only has to catch a collapse, not track the count.
+ */
+const MIN_CUSTOMER_FACING_FILES = 20;
+
+/**
+ * Files a customer can see: pages, components, public assets, emails, and the
+ * copy modules that feed them.
+ *
+ * Throws rather than returning a short list. Every guard built on this asserts
+ * the ABSENCE of something across these files, so a walk that quietly found
+ * nothing — a moved root, a changed extension set — would turn all of them
+ * into passes without failing anything.
+ */
 function customerFacingFiles(): string[] {
-  const roots = ["app", "public", "lib/email"];
+  const roots = ["app", "public", "lib/email", "lib/copy"];
   const out: string[] = [];
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir)) {
@@ -26,6 +40,13 @@ function customerFacingFiles(): string[] {
     }
   };
   for (const root of roots) walk(root);
+  if (out.length < MIN_CUSTOMER_FACING_FILES) {
+    throw new Error(
+      `the customer-facing walk over ${roots.join(", ")} found ${out.length} ` +
+        `files, below the floor of ${MIN_CUSTOMER_FACING_FILES}. The guards ` +
+        `using it assert absence, so this would silently pass them all.`,
+    );
+  }
   return out;
 }
 
@@ -132,28 +153,25 @@ describe("Tier A naming is untouched", () => {
     }
   });
 
-  it("leaves internal Tier A shorthand alone where it exists", () => {
-    // Recorded as an assertion so a future sweep does not "tidy" it away
-    // while the naming decision is still open.
-    const hits: string[] = [];
-    const walk = (dir: string) => {
-      for (const entry of readdirSync(dir)) {
-        const path = join(dir, entry);
-        if (statSync(path).isDirectory()) {
-          if (entry === "node_modules" || entry === ".next") continue;
-          walk(path);
-          continue;
-        }
-        if (!/\.(tsx?|sql|md)$/.test(entry)) continue;
-        if (/tier[_\s]*a\b/i.test(readFileSync(path, "utf8"))) hits.push(path);
+  it("leaks no retired tier or product naming into customer-facing copy", () => {
+    // This previously walked lib/ and supabase/ and then asserted the hits
+    // were not under app/ — which no lib/ or supabase/ path can ever be, so
+    // it could not fail. It now scans the surface a customer actually reads.
+    // Overlaps the guard above on Tier A by design: duplicated real coverage
+    // is cheap, and names retired together should be checked together.
+    const retired = [
+      /tier\s*a\b/i,
+      /tier\s*b\b/i,
+      /tier\s*c\b/i,
+      /book\s+service\s+audit\s+sprint/i,
+      /audit\s+sprint/i,
+    ];
+
+    for (const path of customerFacingFiles()) {
+      const source = readFileSync(path, "utf8");
+      for (const pattern of retired) {
+        expect(source).not.toMatch(pattern);
       }
-    };
-    walk("lib");
-    walk("supabase");
-    // No assertion on the count — this documents that any hits are internal
-    // only, which the customer-facing test above already enforces.
-    for (const path of hits) {
-      expect(path.startsWith("app/")).toBe(false);
     }
   });
 });

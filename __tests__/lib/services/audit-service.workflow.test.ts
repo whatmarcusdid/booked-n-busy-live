@@ -36,6 +36,7 @@ jest.mock("@/lib/crypto", () => ({
   generateSecureToken: () => `raw-token-${++tokenSerial}`,
   hmacSha256: (value: string) => `hmac:${value}`,
   hashEmail: (value: string) => `email:${value}`,
+  normalizeEmail: (value: string) => value.toLowerCase().trim(),
 }));
 
 const payload: AuditSubmission = {

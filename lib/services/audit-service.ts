@@ -1,6 +1,6 @@
 import { createAdminClient } from "../supabase/admin";
 import { describeDatabaseError } from "../supabase/errors";
-import { hashEmail } from "../crypto";
+import { hashEmail, normalizeEmail } from "../crypto";
 import { generateSecureToken, hmacSha256 } from "../crypto";
 import type { AuditSubmission } from "../schemas/audit-submission";
 import { startAuditWorkflow } from "../audit-workflow/start";
@@ -51,6 +51,10 @@ export async function createAudit(
       "create_audit_with_lead",
       {
         p_email_hash: emailHash,
+        // Plaintext alongside the hash: Calendar reconciliation matches
+        // attendees by address and cannot match a hash. Same normalization as
+        // the hash, so the two always describe one address.
+        p_email: normalizeEmail(data.email),
         p_first_name: data.firstName,
         p_business_name: data.businessName,
         p_phone: data.phone || null,

@@ -35,8 +35,21 @@ export function sha256Hex(input: string): string {
 }
 
 /**
+ * The single normalization applied to an email address before it is either
+ * hashed or stored.
+ *
+ * `leads` holds both forms — `email_hash` for dedupe and lookup, `email` in
+ * plaintext for Google Calendar attendee matching. They have to describe the
+ * same address, so both go through here: normalizing in one place and not the
+ * other is how a lead ends up with a hash and a plaintext that disagree.
+ */
+export function normalizeEmail(email: string): string {
+  return email.toLowerCase().trim();
+}
+
+/**
  * Hash an email address for deduplication/lookup.
  */
 export function hashEmail(email: string): string {
-  return hmacSha256(email.toLowerCase().trim());
+  return hmacSha256(normalizeEmail(email));
 }

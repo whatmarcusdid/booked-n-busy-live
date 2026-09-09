@@ -22,6 +22,7 @@ export const REQUIRED_RPC_NAME = "create_audit_with_lead";
 
 export const REQUIRED_RPC_PARAMETERS: readonly string[] = [
   "p_email_hash",
+  "p_email",
   "p_first_name",
   "p_business_name",
   "p_phone",
@@ -64,7 +65,7 @@ export const REQUIRED_TABLE_COLUMNS: Readonly<
     "retry_of_audit_id",
     "retry_attempt",
   ],
-  leads: ["id", "email_hash", "qualification_status", "qualified_at"],
+  leads: ["id", "email_hash", "email", "qualification_status", "qualified_at"],
   audit_cost_entries: [
     "audit_id",
     "operation_key",
