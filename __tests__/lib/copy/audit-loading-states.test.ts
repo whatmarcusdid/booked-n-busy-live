@@ -402,4 +402,20 @@ describe("all three states render at all three breakpoints", () => {
     expect(css).toContain("@media (min-width: 1024px)");
     expect(css).toContain(".audit-loading-fact:nth-child(3)");
   });
+
+  it("keeps stage copy and Cancel inside a 402px viewport", () => {
+    // Long unwrapped lines used to inflate the page past the screen; Cancel
+    // then sat off the right edge. The shell must shrink, and text must wrap.
+    expect(css).toContain("overflow-x: hidden");
+    expect(css).toContain("main.audit-loading");
+    expect(css).toMatch(
+      /\.audit-loading-row-text[\s\S]*?overflow-wrap:\s*break-word/,
+    );
+    expect(css).toMatch(
+      /\.audit-loading-content \{[\s\S]*?min-width:\s*0/,
+    );
+    expect(css).toMatch(
+      /\.audit-loading-cancel \{[\s\S]*?flex-shrink:\s*0/,
+    );
+  });
 });

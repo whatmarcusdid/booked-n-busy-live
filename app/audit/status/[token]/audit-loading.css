@@ -18,6 +18,10 @@
   --al-h2: 28px;
 
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -27,6 +31,18 @@
   padding: 32px 24px;
   color: var(--al-text-default);
   background: var(--al-surface-page);
+  /* Long stage/fact lines used to inflate this page past the viewport; the
+     nav's Cancel then sat off-screen to the right. Clip that axis and let
+     the document scroll so Did you know? stays reachable. */
+  overflow-x: hidden;
+}
+
+/* globals.css styles every `main` as a centered grid with 2rem padding.
+   This page is its own shell — keep those rules from shrinking or clipping it. */
+main.audit-loading {
+  display: flex;
+  place-items: unset;
+  padding: 32px 24px;
 }
 
 .audit-loading p,
@@ -42,7 +58,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: 51px;
   flex-shrink: 0;
 }
@@ -51,6 +70,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   text-decoration: none;
 }
 
@@ -83,6 +103,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   min-width: 100px;
   height: 44px;
   padding: 10px 24px;
@@ -115,6 +136,7 @@
   gap: 48px;
   width: 100%;
   max-width: 800px;
+  min-width: 0;
 }
 
 .audit-loading-hero {
@@ -180,12 +202,13 @@
 }
 
 .audit-loading-row-text {
-  flex: 1 0 0;
+  flex: 1 1 0;
   min-width: 0;
   font-size: 16px;
   font-weight: 400;
   line-height: 1.45;
   color: var(--al-text-subtle);
+  overflow-wrap: break-word;
 }
 
 .audit-loading-row-text strong {
@@ -309,12 +332,13 @@
 }
 
 .audit-loading-card-text {
-  flex: 1 0 0;
+  flex: 1 1 0;
   min-width: 0;
   font-size: 16px;
   font-weight: 400;
   line-height: 1.45;
   color: var(--al-text-subtle);
+  overflow-wrap: break-word;
 }
 
 /* Wait card: a single 388px card in the desktop frames. */
@@ -377,7 +401,7 @@
   .audit-loading {
     --al-h1: 30px;
     --al-h2: 24px;
-    align-items: flex-start;
+    align-items: stretch;
   }
 
   .audit-loading-content {
