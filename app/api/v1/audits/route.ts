@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auditSubmissionSchema } from "@/lib/schemas/audit-submission";
 import { normalizeAndValidateUrl } from "@/lib/services/url-validator";
 import { createAudit } from "@/lib/services/audit-service";
+import { describeDatabaseError } from "@/lib/supabase/errors";
 import { ZodError } from "zod";
 
 export async function POST(request: NextRequest) {
@@ -65,7 +66,10 @@ export async function POST(request: NextRequest) {
     }
 
     if ("error" in result) {
-      console.error("Audit creation failed:", result);
+      console.error(
+        "Audit creation failed:",
+        describeDatabaseError(result.details ?? result.error),
+      );
       return NextResponse.json(
         {
           error: "Failed to create audit",
@@ -85,7 +89,10 @@ export async function POST(request: NextRequest) {
       { status: 202 },
     );
   } catch (error) {
-    console.error("Unexpected error in audit submission:", error);
+    console.error(
+      "Unexpected error in audit submission:",
+      describeDatabaseError(error),
+    );
     return NextResponse.json(
       {
         error: "Internal server error",

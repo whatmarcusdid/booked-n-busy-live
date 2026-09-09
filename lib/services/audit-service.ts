@@ -1,4 +1,5 @@
 import { createAdminClient } from "../supabase/admin";
+import { describeDatabaseError } from "../supabase/errors";
 import { hashEmail } from "../crypto";
 import { generateSecureToken, hmacSha256 } from "../crypto";
 import type { AuditSubmission } from "../schemas/audit-submission";
@@ -74,7 +75,10 @@ export async function createAudit(
     );
 
     if (error) {
-      console.error("Database error creating audit:", error);
+      console.error(
+        "Database error creating audit:",
+        describeDatabaseError(error),
+      );
       return {
         error: "Failed to create audit",
         details: process.env.NODE_ENV === "development" ? error : undefined,
@@ -97,7 +101,10 @@ export async function createAudit(
         .eq("id", auditRecord.audit_id);
 
       if (rotateError) {
-        console.error("Failed to rotate status token hash:", rotateError);
+        console.error(
+          "Failed to rotate status token hash:",
+          describeDatabaseError(rotateError),
+        );
         return {
           error: "Failed to create audit",
           details:
@@ -119,7 +126,10 @@ export async function createAudit(
         websiteUrl: normalizedUrl,
       });
     } catch (workflowError) {
-      console.error("Failed to start audit workflow:", workflowError);
+      console.error(
+        "Failed to start audit workflow:",
+        describeDatabaseError(workflowError),
+      );
     }
 
     return {
@@ -129,7 +139,10 @@ export async function createAudit(
       duplicate: !auditRecord.is_new_lead,
     };
   } catch (error) {
-    console.error("Unexpected error creating audit:", error);
+    console.error(
+      "Unexpected error creating audit:",
+      describeDatabaseError(error),
+    );
     return {
       error: "Internal server error",
       details: process.env.NODE_ENV === "development" ? error : undefined,

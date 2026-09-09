@@ -63,8 +63,26 @@ export const CRITERIA_BY_PILLAR: Record<
 
 export const WORKFLOW_STARTED_EVENT = "workflow_started";
 
+/**
+ * The durable execution could not be enqueued, so no stage will ever run.
+ * This terminates the audit as Failed instead of leaving it in `submitted`,
+ * where it would poll forever against work that does not exist.
+ */
+export const WORKFLOW_START_FAILED_EVENT = "workflow_start_failed";
+export const WORKFLOW_START_FAILED_REASON = "WORKFLOW_START_FAILED";
+
 export function isWorkflowTerminalState(
   value: string,
 ): value is WorkflowTerminalState {
   return (WORKFLOW_TERMINAL_STATES as readonly string[]).includes(value);
+}
+
+export function isAuditWorkflowState(
+  value: string,
+): value is AuditWorkflowState {
+  return (
+    value === "submitted" ||
+    (PROCESSING_STATES as readonly string[]).includes(value) ||
+    isWorkflowTerminalState(value)
+  );
 }
