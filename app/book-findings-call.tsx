@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ANALYTICS_EVENTS, trackEvent } from "@/lib/analytics/events";
+import {
+  REPORT_BOOKING_SESSIONS_PATH,
+  REPORT_PREPARE_PATH,
+} from "@/lib/copy/pre-call";
 import { MdFilledButton } from "@/lib/material/md-filled-button";
 
 export const BOOK_FINDINGS_CALL_LABEL = "Book your findings call";
@@ -13,7 +17,13 @@ export const BOOK_FINDINGS_CALL_LABEL = "Book your findings call";
  * there is no competing "email me the report" action to offer — that was the
  * point of collapsing to one CTA.
  */
-export function BookFindingsCall({ statusToken }: { statusToken?: string }) {
+export function BookFindingsCall({
+  statusToken,
+  label = BOOK_FINDINGS_CALL_LABEL,
+}: {
+  statusToken?: string;
+  label?: string;
+}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const viewed = useRef(false);
@@ -49,7 +59,10 @@ export function BookFindingsCall({ statusToken }: { statusToken?: string }) {
     setPending(true);
     trackEvent(ANALYTICS_EVENTS.resultsCtaClicked);
     try {
-      const response = await fetch("/api/v1/booking-sessions", {
+      const bookingUrl = statusToken
+        ? "/api/v1/booking-sessions"
+        : REPORT_BOOKING_SESSIONS_PATH;
+      const response = await fetch(bookingUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(statusToken ? { statusToken } : {}),
@@ -66,7 +79,11 @@ export function BookFindingsCall({ statusToken }: { statusToken?: string }) {
       trackEvent(ANALYTICS_EVENTS.bookingSessionCreated, {
         booking_session_id: json.bookingSessionId ?? null,
       });
-      window.location.assign(json.scheduleUrl);
+      window.location.assign(
+        statusToken
+          ? `/audit/prepare/${statusToken}`
+          : REPORT_PREPARE_PATH,
+      );
     } catch {
       setError("Could not start booking.");
     } finally {
@@ -77,7 +94,7 @@ export function BookFindingsCall({ statusToken }: { statusToken?: string }) {
   return (
     <div ref={anchor}>
       <MdFilledButton disabled={pending} onClick={onClick} type="button">
-        {pending ? "Starting…" : BOOK_FINDINGS_CALL_LABEL}
+        {pending ? "Starting…" : label}
       </MdFilledButton>
       {error ? <p role="alert">{error}</p> : null}
     </div>

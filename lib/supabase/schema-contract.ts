@@ -74,6 +74,14 @@ export const REQUIRED_TABLE_COLUMNS: Readonly<
     "pricing_source",
   ],
   booking_sessions: ["audit_id", "lead_id", "customer_email_hash"],
+  pre_call_answers: [
+    "audit_id",
+    "lead_id",
+    "finding_answer",
+    "result_answer",
+    "timing_answer",
+    "submitted_at",
+  ],
   report_revisions: ["scoring_band_version", "score_band"],
   // `rule_version` is recorded per result row, not on the revision.
   criterion_results: ["rule_version"],

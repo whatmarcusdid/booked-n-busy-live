@@ -189,14 +189,42 @@ describe("results page has exactly one CTA", () => {
       "booking_session_created",
     );
   });
+
+  it("redirects to prepare with the status token after a successful booking", () => {
+    const cta = readFileSync("app/book-findings-call.tsx", "utf8");
+    expect(cta).toContain("`/audit/prepare/${statusToken}`");
+    expect(cta).not.toMatch(
+      /window\.location\.assign\(\s*json\.scheduleUrl\s*\)/,
+    );
+    expect(cta).toContain('"/api/v1/booking-sessions"');
+  });
+
+  it("posts to /report/booking-sessions when no statusToken is present", () => {
+    const cta = readFileSync("app/book-findings-call.tsx", "utf8");
+    expect(cta).toContain("REPORT_BOOKING_SESSIONS_PATH");
+    expect(cta).toMatch(
+      /statusToken\s*\?\s*"\/api\/v1\/booking-sessions"\s*:\s*REPORT_BOOKING_SESSIONS_PATH/,
+    );
+    expect(cta).toContain("REPORT_PREPARE_PATH");
+  });
+
+  it("sends cookie-auth /report visitors to /report/prepare, not /schedule", () => {
+    const cta = readFileSync("app/book-findings-call.tsx", "utf8");
+    expect(cta).toContain("REPORT_PREPARE_PATH");
+    expect(cta).not.toMatch(
+      /statusToken \? `\/audit\/prepare\/\$\{statusToken\}` : json\.scheduleUrl/,
+    );
+  });
 });
 
 describe("report email stays independent of the CTA", () => {
   it("delivery is not triggered by any results-page action", () => {
     const cta = readFileSync("app/book-findings-call.tsx", "utf8");
-    // The CTA's only request is the booking session.
-    const requests = cta.match(/fetch\("[^"]*"/g) ?? [];
-    expect(requests).toEqual(['fetch("/api/v1/booking-sessions"']);
+    const requests = cta.match(/fetch\([^)]+/g) ?? [];
+    expect(requests).toHaveLength(1);
+    expect(cta).toContain('"/api/v1/booking-sessions"');
+    expect(cta).toContain("REPORT_BOOKING_SESSIONS_PATH");
+    expect(cta).not.toContain("/email");
 
     // And booking creation cannot send an email.
     const session = readFileSync("lib/booking/session.ts", "utf8");
