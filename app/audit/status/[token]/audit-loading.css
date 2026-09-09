@@ -90,12 +90,20 @@
   border-radius: var(--al-radius);
   background: transparent;
   color: var(--al-action-primary);
+  font-family: inherit;
   font-size: 16px;
   font-weight: 600;
   line-height: 1.25;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
+}
+
+/* Inert until cancellation exists — see the nav comment in page.tsx. */
+.audit-loading-cancel:disabled {
+  border-color: var(--al-border-default);
+  color: var(--al-text-subtle);
+  cursor: not-allowed;
 }
 
 /* Hero ----------------------------------------------------------------- */

@@ -3,6 +3,23 @@ import {
   ACCESS_DENIED_CUSTOMER_MESSAGE,
   isTargetAccessDenied,
 } from "../browserless/reasons";
+import { CAPTURE_MILESTONES } from "../audit-workflow/capture-milestones";
+import {
+  activePillarGroup,
+  resolvePillarGroupProgress,
+  type PillarGroupProgress,
+} from "../audit-workflow/progress-groups";
+import { PILLARS, type PillarKey } from "../audit-workflow/types";
+
+/** Tuple forms, because `z.enum` needs literals rather than `string[]`. */
+const PILLAR_KEYS = PILLARS.map((pillar) => pillar.key) as [
+  PillarKey,
+  ...PillarKey[],
+];
+const CAPTURE_MILESTONE_KEYS = [...CAPTURE_MILESTONES] as [
+  (typeof CAPTURE_MILESTONES)[number],
+  ...(typeof CAPTURE_MILESTONES)[number][],
+];
 
 /**
  * Customer-safe audit status response schema
@@ -29,6 +46,24 @@ export const auditStatusResponseSchema = z.object({
   progress: z.object({
     percentage: z.number().min(0).max(100),
     currentStep: z.string(),
+    /**
+     * Real per-pillar progress, so the loading screen can present one stage
+     * at a time instead of three at once. Absent on terminal states, where
+     * there is no in-flight work to describe.
+     */
+    groups: z
+      .array(
+        z.object({
+          key: z.enum(PILLAR_KEYS),
+          progress: z.enum(["pending", "in_progress", "complete"]),
+          returned: z.number().int().min(0),
+          total: z.number().int().min(0),
+        }),
+      )
+      .optional(),
+    activeGroup: z.enum(PILLAR_KEYS).nullable().optional(),
+    /** Furthest capture milestone reached within `rendering`. */
+    captureMilestone: z.enum(CAPTURE_MILESTONE_KEYS).nullable().optional(),
   }),
   websiteUrl: z.string(),
   businessName: z.string(),
@@ -82,6 +117,28 @@ export interface ProgressDiagnosticHint {
 }
 
 /**
+ * Observed check progress for an in-flight audit.
+ *
+ * `returnedCriterionKeys` are the checks whose rows exist. Callers pass what
+ * the database actually holds; this module never assumes a check returned.
+ */
+export interface ProgressSignals {
+  returnedCriterionKeys?: readonly string[];
+  captureMilestone?: (typeof CAPTURE_MILESTONES)[number] | null;
+}
+
+/** States in which the twelve checks are underway. */
+const SIGNAL_STATES = new Set(["collecting_signals", "scoring"]);
+
+export interface ProgressInfo {
+  percentage: number;
+  currentStep: string;
+  groups?: PillarGroupProgress[];
+  activeGroup?: PillarKey | null;
+  captureMilestone?: (typeof CAPTURE_MILESTONES)[number] | null;
+}
+
+/**
  * Map internal state to customer-facing progress.
  *
  * Deliberately carries no per-stage time estimate. The stages used to
@@ -92,10 +149,8 @@ export interface ProgressDiagnosticHint {
 export function getProgressInfo(
   status: string,
   diagnostic?: ProgressDiagnosticHint,
-): {
-  percentage: number;
-  currentStep: string;
-} {
+  signals?: ProgressSignals,
+): ProgressInfo {
   const unsupportedStep = isTargetAccessDenied(
     diagnostic?.failureType,
     diagnostic?.httpStatus,
@@ -157,10 +212,34 @@ export function getProgressInfo(
 
   const info = statusMap[status] || statusMap.submitted;
 
+  // Terminal audits have no work in flight, so reporting a group as active
+  // there would claim a check is running after the audit has stopped.
+  if (isTerminalState(status)) {
+    return { percentage: info.percentage, currentStep: info.step };
+  }
+
+  const groups = resolvePillarGroupProgress({
+    returnedCriterionKeys: signals?.returnedCriterionKeys ?? [],
+    signalsStarted: SIGNAL_STATES.has(status),
+  });
+  const activeGroup = activePillarGroup(groups);
+
   return {
     percentage: info.percentage,
-    currentStep: info.step,
+    // While the checks are running, name the pillar actually outstanding
+    // rather than the one generic line the whole phase used to report.
+    currentStep:
+      SIGNAL_STATES.has(status) && activeGroup
+        ? `Checking ${pillarName(activeGroup).toLowerCase()}`
+        : info.step,
+    groups,
+    activeGroup,
+    captureMilestone: signals?.captureMilestone ?? null,
   };
+}
+
+function pillarName(key: PillarKey): string {
+  return PILLARS.find((pillar) => pillar.key === key)!.name;
 }
 
 /**

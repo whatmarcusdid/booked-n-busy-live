@@ -13,12 +13,15 @@ import { TERMINAL_AUDIT_STATES } from "../schemas/audit-status";
 export const TIMING_PROMISE = "Most audits complete in under 2 minutes.";
 
 /**
- * Shown once an audit passes the threshold. Sets the expectation that the
- * report arrives by email so the customer is free to leave the page, without
- * claiming anything has gone wrong — processing continues untouched.
+ * Shown once an audit passes the threshold. Reports that the audit is slow
+ * without claiming anything has gone wrong — processing continues untouched.
+ *
+ * Says nothing about email: on the loading screen this sits directly above
+ * the wait card, which already promises delivery and explains that the page
+ * can be closed. Both sentences made the promise back to back, so this one
+ * gives it up and the card carries it.
  */
-export const SLOW_AUDIT_MESSAGE =
-  "This one's taking a bit longer than usual — we'll email your report as soon as it's ready.";
+export const SLOW_AUDIT_MESSAGE = "This one's taking a bit longer than usual.";
 
 /**
  * 90 seconds, measured from durable execution start rather than from page

@@ -75,8 +75,30 @@ describe("three states, resolved from status alone", () => {
     expect(view?.statusLine.lead).toBe(SLOW_AUDIT_MESSAGE);
     expect(view?.statusLine.emphasis).toBeUndefined();
     expect(SLOW_AUDIT_MESSAGE).toBe(
-      "This one's taking a bit longer than usual — we'll email your report as soon as it's ready.",
+      "This one's taking a bit longer than usual.",
     );
+  });
+
+  it("promises email delivery once in the slow state, not twice", () => {
+    // The sentence and the wait card sat directly above one another and both
+    // promised the email. The card owns that promise; the sentence reports
+    // only that the audit is slow.
+    const view = resolveLoadingView({
+      status: "scoring",
+      elapsedMs: SLOW_AUDIT_THRESHOLD_MS,
+    });
+
+    const onScreen = [
+      view?.headline ?? "",
+      view?.statusLine.lead ?? "",
+      view?.statusLine.emphasis ?? "",
+      view?.waitCard?.heading ?? "",
+      view?.waitCard?.body ?? "",
+    ].join(" ");
+
+    expect(onScreen.match(/we\u2019ll email|we'll email/gi)).toHaveLength(1);
+    expect(view?.statusLine.lead).not.toMatch(/email/i);
+    expect(view?.waitCard?.body).toMatch(/email/i);
   });
 
   it("keeps polling in the slow state so a late finish still reaches results", () => {
@@ -157,33 +179,90 @@ describe("progress stages reflect real workflow state", () => {
   });
 
   it("advances the active stage as the workflow advances", () => {
-    const activeFor = (status: string) =>
-      resolveStages({ status, anyActive: true })
+    const activeFor = (input: Parameters<typeof resolveStages>[0]) =>
+      resolveStages(input)
         .filter((s) => s.progress === "active")
         .map((s) => s.key);
 
-    expect(activeFor("validating")).toEqual(["reachable"]);
-    // One workflow state genuinely covers three pillars at once.
-    expect(activeFor("collecting_signals")).toEqual([
-      "trust",
-      "contact",
-      "foundations",
+    expect(activeFor({ status: "validating", anyActive: true })).toEqual([
+      "reachable",
     ]);
-    expect(activeFor("scoring")).toEqual(["scorecard"]);
+
+    // Capture is the long wait, but it is still "is the site reachable".
+    // Pillar-named stages wait for the checks those pillars actually own.
+    expect(
+      activeFor({
+        status: "rendering",
+        anyActive: true,
+        captureMilestone: null,
+      }),
+    ).toEqual(["reachable"]);
+    expect(
+      activeFor({
+        status: "rendering",
+        anyActive: true,
+        captureMilestone: "capture_pages",
+      }),
+    ).toEqual(["reachable"]);
+
+    // Once checks are running, the active pillar group picks the stage.
+    expect(
+      activeFor({
+        status: "scoring",
+        anyActive: true,
+        activeGroup: "trust_signals",
+      }),
+    ).toEqual(["trust"]);
+    expect(
+      activeFor({
+        status: "scoring",
+        anyActive: true,
+        activeGroup: "lead_conversion",
+      }),
+    ).toEqual(["contact"]);
+    expect(
+      activeFor({
+        status: "scoring",
+        anyActive: true,
+        activeGroup: "growth_infrastructure",
+      }),
+    ).toEqual(["foundations"]);
+
+    // Explicitly null means every group returned: only the scorecard is left.
+    expect(
+      activeFor({ status: "scoring", anyActive: true, activeGroup: null }),
+    ).toEqual(["scorecard"]);
+
+    expect(
+      activeFor({ status: "generating_report", anyActive: true }),
+    ).toEqual(["scorecard"]);
   });
 
   it("marks earlier stages done and later ones pending, never the reverse", () => {
     const stages = resolveStages({
-      status: "collecting_signals",
+      status: "scoring",
       anyActive: true,
+      activeGroup: "lead_conversion",
     });
     expect(stages.map((s) => s.progress)).toEqual([
       "done",
-      "active",
-      "active",
+      "done",
       "active",
       "pending",
+      "pending",
     ]);
+  });
+
+  it("widens rather than guesses when a signal state carries no group data", () => {
+    // Absent signals are not evidence that trust is the running pillar. The
+    // pre-existing three-wide claim is the honest fallback.
+    const stages = resolveStages({
+      status: "collecting_signals",
+      anyActive: true,
+    });
+    expect(
+      stages.filter((s) => s.progress === "active").map((s) => s.key),
+    ).toEqual(["trust", "contact", "foundations"]);
   });
 
   it("presents exactly one stage as running per processing state", () => {
@@ -240,6 +319,26 @@ describe("the 90-second transition changes only what is displayed", () => {
       // Every audit-mutating route lives under /api/v1/audits/.
       expect(source).not.toContain("/api/v1/audits");
     }
+  });
+
+  it("offers no control that implies the audit can be stopped", () => {
+    // Cancel navigated home while the scan kept running and the report was
+    // still emailed. Nothing on this screen can stop an audit, so nothing on
+    // it may look like it can.
+    const page = stripComments(readFileSync(PAGE, "utf8"));
+    const cancel = page.match(/<(\w+)[^>]*audit-loading-cancel[^>]*>/);
+
+    expect(cancel).not.toBeNull();
+    // A disabled button, not a link: an anchor cannot be inert.
+    expect(cancel![1]).toBe("button");
+    expect(cancel![0]).toContain("disabled");
+    expect(cancel![0]).not.toContain("href");
+
+    const css = readFileSync(
+      join(process.cwd(), "app/audit/status/[token]/audit-loading.css"),
+      "utf8",
+    );
+    expect(css).toContain(".audit-loading-cancel:disabled");
   });
 
   it("resumes from server-resolved status on first paint", () => {

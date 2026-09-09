@@ -1,3 +1,5 @@
+import type { CaptureMilestone } from "../audit-workflow/capture-milestones";
+import type { PillarKey } from "../audit-workflow/types";
 import { SLOW_AUDIT_MESSAGE, SLOW_AUDIT_THRESHOLD_MS } from "./timing";
 
 /**
@@ -39,24 +41,73 @@ export type ProgressStageKey = (typeof PROGRESS_STAGES)[number]["key"];
 export type StageProgress = "done" | "active" | "pending";
 
 /**
- * Which customer stages a workflow state is actually working on.
+ * The coarsest stage a workflow state can be in, before real progress signals
+ * narrow it further.
  *
- * `collecting_signals` maps to three stages because it genuinely does all
- * three pillars under one state — the workflow does not expose finer
- * granularity. Showing all three as active is the honest reading; picking one
- * would leave two stages that never appear, and cycling them on a timer would
- * claim a check is running on no evidence at all.
+ * `rendering` and the two signal states are refined below by what the backend
+ * observed. Every other state maps to exactly one stage on its own.
  */
-const ACTIVE_STAGES: Record<string, readonly number[]> = {
-  submitted: [0],
-  validating: [0],
-  discovering: [0],
-  rendering: [0],
-  collecting_signals: [1, 2, 3],
-  scoring: [4],
-  generating_report: [4],
-  validating_report: [4],
+const STAGE_FOR_STATE: Record<string, number> = {
+  submitted: 0,
+  validating: 0,
+  discovering: 0,
+  rendering: 0,
+  collecting_signals: 1,
+  scoring: 1,
+  generating_report: 4,
+  validating_report: 4,
 };
+
+/** States in which the twelve checks are underway. */
+const SIGNAL_STATES = new Set(["collecting_signals", "scoring"]);
+
+/**
+ * Stages 1-3 are the three scoring pillars, in catalog order. Membership
+ * lives in `CRITERIA_BY_PILLAR`; this is only the screen index.
+ */
+const STAGE_FOR_GROUP: Record<PillarKey, number> = {
+  trust_signals: 1,
+  lead_conversion: 2,
+  growth_infrastructure: 3,
+};
+
+/** The last stage: the scorecard, once every check has returned. */
+const SCORECARD_STAGE = 4;
+
+/**
+ * The stage indices to present as running, or null when nothing is.
+ *
+ * Stages 1-3 follow group-level check progress from the status API, not a
+ * timer and not capture. Capture is the long wait, but it is still "is this
+ * website reachable", so `rendering` stays on stage 0. Inventing pillar
+ * progress out of screenshot milestones would be the same three-wide lie
+ * this screen was built to stop telling.
+ *
+ * The three-wide result applies only when a signal state arrives with no
+ * group data at all: narrowing on absent evidence would be a guess.
+ */
+function activeStageIndices(input: {
+  status: string;
+  activeGroup?: PillarKey | null;
+}): readonly number[] | null {
+  const base = STAGE_FOR_STATE[input.status];
+  if (base === undefined) return null;
+
+  if (SIGNAL_STATES.has(input.status)) {
+    // Explicitly null means every group returned. Undefined means no signals
+    // were supplied at all, which is not evidence that any group finished.
+    if (input.activeGroup === null) return [SCORECARD_STAGE];
+    if (input.activeGroup === undefined) return [1, 2, 3];
+    return [STAGE_FOR_GROUP[input.activeGroup]];
+  }
+
+  return [base];
+}
+
+/** Whether this screen owns the given workflow state. */
+export function isProgressState(status: string): boolean {
+  return status in STAGE_FOR_STATE;
+}
 
 export interface ProgressStageView {
   key: ProgressStageKey;
@@ -75,8 +126,10 @@ export interface ProgressStageView {
 export function resolveStages(input: {
   status: string;
   anyActive: boolean;
+  activeGroup?: PillarKey | null;
+  captureMilestone?: CaptureMilestone | null;
 }): ProgressStageView[] {
-  const active = ACTIVE_STAGES[input.status];
+  const active = activeStageIndices(input);
 
   return PROGRESS_STAGES.map((stage, index) => {
     if (!active || !input.anyActive) {
@@ -153,6 +206,8 @@ export const DID_YOU_KNOW_FACTS = [
 export function resolveLoadingView(input: {
   status: string;
   elapsedMs: number;
+  activeGroup?: PillarKey | null;
+  captureMilestone?: CaptureMilestone | null;
 }): LoadingView | null {
   // Checked before elapsed time, and never combined with it. Needs Review is
   // a statement about the audit's findings; how long the audit took has no
@@ -173,10 +228,15 @@ export function resolveLoadingView(input: {
     };
   }
 
-  if (!(input.status in ACTIVE_STAGES)) return null;
+  if (!isProgressState(input.status)) return null;
 
   const slow = input.elapsedMs >= SLOW_AUDIT_THRESHOLD_MS;
-  const stages = resolveStages({ status: input.status, anyActive: true });
+  const stages = resolveStages({
+    status: input.status,
+    anyActive: true,
+    activeGroup: input.activeGroup,
+    captureMilestone: input.captureMilestone,
+  });
 
   if (slow) {
     return {

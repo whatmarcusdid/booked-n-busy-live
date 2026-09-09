@@ -17,7 +17,7 @@ describe("locked timing copy", () => {
   it("uses the approved promise and fallback wording", () => {
     expect(TIMING_PROMISE).toBe("Most audits complete in under 2 minutes.");
     expect(SLOW_AUDIT_MESSAGE).toBe(
-      "This one's taking a bit longer than usual — we'll email your report as soon as it's ready.",
+      "This one's taking a bit longer than usual.",
     );
     expect(SLOW_AUDIT_THRESHOLD_MS).toBe(90_000);
   });

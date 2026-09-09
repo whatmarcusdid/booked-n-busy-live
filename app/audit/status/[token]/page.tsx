@@ -41,13 +41,16 @@ export default async function AuditStatusPage({
           </span>
         </Link>
         {/*
-          Leaves the page without touching the audit — the scan keeps running
-          and the report is still emailed. There is no cancel endpoint, and
-          adding one would mean a new terminal state.
+          Inert on purpose. As a link this navigated home without touching the
+          audit — the scan kept running and the report was still emailed — so
+          it advertised a capability that does not exist. Disabled rather than
+          relabelled or removed, because the control is the right one once
+          real cancellation lands; that needs a new terminal state plus cost
+          and lead handling, which is its own piece of work.
         */}
-        <Link className="audit-loading-cancel" href="/">
+        <button className="audit-loading-cancel" type="button" disabled>
           Cancel
-        </Link>
+        </button>
       </nav>
       <StatusPoller token={token} initial={initial} />
     </main>

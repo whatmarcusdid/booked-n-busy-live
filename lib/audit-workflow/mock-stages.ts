@@ -1,5 +1,9 @@
 import { createHash } from "crypto";
 import {
+  PROGRESS_MILESTONE_EVENT,
+  type CaptureMilestone,
+} from "./capture-milestones";
+import {
   customerMessageForHomeFetchFailure,
   fetchBrowserlessContent,
   inferHomeFetchFailureType,
@@ -49,6 +53,7 @@ import {
   mockKeysForAffectedPillars,
 } from "./rubric/apply";
 import { extractHomeScoringSignals } from "./rubric/signals";
+import { persistCriteriaByGroup } from "./progress-groups";
 import { isRealHomeCheck, RULE_VERSION } from "./rubric/model";
 import {
   assessUrlSafety,
@@ -235,6 +240,29 @@ export const PAGE_COVERAGE_RESOLVED_EVENT = "page_coverage_resolved";
 export const ROBOTS_PREFLIGHT_EVENT = "robots_txt_preflight";
 export const ROBOTS_PAGE_SKIPPED_EVENT = "robots_txt_page_skipped";
 export const ROBOTS_DISALLOWED_REASON_CODE = "ROBOTS_DISALLOWED";
+
+/**
+ * Appends a capture milestone for the status API to read.
+ *
+ * Progress reporting must never be able to fail an audit, so a write that
+ * does not land is swallowed: the customer sees a coarser progress bar, which
+ * is a far better outcome than losing the scan over it. The reader takes the
+ * furthest milestone present, so a dropped row self-heals at the next one.
+ */
+async function recordCaptureMilestone(
+  store: AuditWorkflowStore,
+  auditId: string,
+  milestone: CaptureMilestone,
+): Promise<void> {
+  try {
+    await store.recordEvent(auditId, PROGRESS_MILESTONE_EVENT, { milestone });
+  } catch (error) {
+    console.warn(
+      `Could not record capture milestone ${milestone} for audit ${auditId}:`,
+      error,
+    );
+  }
+}
 
 async function persistHomeFetchDiagnostic(
   store: AuditWorkflowStore,
@@ -768,6 +796,7 @@ export async function applyMockStageWork(input: {
         operationKey: "storage:home",
         quantity: 2,
       });
+      await recordCaptureMilestone(store, auditId, "capture_home");
 
       const performance = await spend(
         input.budget,
@@ -785,6 +814,7 @@ export async function applyMockStageWork(input: {
           }),
       );
       if (performance.tripped) return killSwitchResult();
+      await recordCaptureMilestone(store, auditId, "capture_performance");
 
       for (const pageType of CATEGORY_PAGE_TYPES) {
         const page = await spend(
@@ -811,6 +841,7 @@ export async function applyMockStageWork(input: {
           operationKey: `storage:${pageType}`,
         });
       }
+      await recordCaptureMilestone(store, auditId, "capture_pages");
     } else {
       await store.upsertEvidence(auditId, [
         {
@@ -820,6 +851,7 @@ export async function applyMockStageWork(input: {
           metadata: { page: "home" },
         },
       ]);
+      await recordCaptureMilestone(store, auditId, "capture_home");
       await store.upsertEvidence(auditId, [
         {
           mock_key: "lighthouse_report",
@@ -830,6 +862,10 @@ export async function applyMockStageWork(input: {
           },
         },
       ]);
+      await recordCaptureMilestone(store, auditId, "capture_performance");
+      // The mock branch has no category pages to capture, but it still passes
+      // the point where the real branch would have finished them.
+      await recordCaptureMilestone(store, auditId, "capture_pages");
     }
   }
 
@@ -880,7 +916,9 @@ export async function applyMockStageWork(input: {
       };
     });
 
-    await store.upsertCriteria(auditId, criteria);
+    await persistCriteriaByGroup(criteria, (rows) =>
+      store.upsertCriteria(auditId, rows),
+    );
 
     const pillars = PILLARS.flatMap((pillar) => {
       const pillarCriteria = criteria.filter((row) => row.pillar === pillar.key);

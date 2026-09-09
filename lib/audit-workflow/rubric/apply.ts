@@ -33,6 +33,7 @@ import {
   type HomeScoringSignals,
 } from "./signals";
 import { outcomeFromMockScore } from "../recommendations";
+import { persistCriteriaByGroup } from "../progress-groups";
 import { assessSecurityHealth } from "./security-health";
 import { assessWebsitePerformance } from "./website-performance";
 import type { PerformanceSignal } from "./website-performance";
@@ -805,7 +806,9 @@ export async function applyHomeRubric(input: {
   });
 
   const all = [...reviewedRows, ...mockRows];
-  await input.store.upsertCriteria(input.auditId, all);
+  await persistCriteriaByGroup(all, (rows) =>
+    input.store.upsertCriteria(input.auditId, rows),
+  );
 
   const pillars: PillarInput[] = PILLARS.flatMap((pillar) => {
     const rows = all.filter((row) => row.pillar === pillar.key);

@@ -5,7 +5,14 @@ import {
   isTerminalState,
   type AuditStatusResponse,
   type ProgressDiagnosticHint,
+  type ProgressSignals,
 } from "../schemas/audit-status";
+import {
+  CAPTURE_MILESTONES,
+  furthestCaptureMilestone,
+  isCaptureMilestone,
+  PROGRESS_MILESTONE_EVENT,
+} from "../audit-workflow/capture-milestones";
 
 type AuditReport = NonNullable<AuditStatusResponse["report"]>;
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -33,6 +40,38 @@ async function loadUnsupportedProgressHint(
       typeof metadata.http_status === "number"
         ? metadata.http_status
         : undefined,
+  };
+}
+
+/**
+ * Reads the two facts that describe how far an in-flight audit has actually
+ * got: which checks have returned rows, and how far capture reached.
+ *
+ * Both are read from what the pipeline already writes, so progress cannot
+ * claim work the audit did not do. Only called for non-terminal audits, since
+ * a finished audit has no in-flight work to describe.
+ */
+async function loadProgressSignals(
+  supabase: AdminClient,
+  auditId: string,
+): Promise<ProgressSignals> {
+  const [criteria, events] = await Promise.all([
+    supabase.from("criterion_results").select("criterion_key").eq("audit_id", auditId),
+    supabase
+      .from("audit_events")
+      .select("event_data")
+      .eq("audit_id", auditId)
+      .eq("event_type", PROGRESS_MILESTONE_EVENT),
+  ]);
+
+  const milestones = (events.data ?? [])
+    .map((row) => (row.event_data as Record<string, unknown> | null)?.milestone)
+    .filter(isCaptureMilestone);
+  const furthest = furthestCaptureMilestone(milestones);
+
+  return {
+    returnedCriterionKeys: (criteria.data ?? []).map((row) => row.criterion_key),
+    captureMilestone: furthest >= 0 ? CAPTURE_MILESTONES[furthest] : null,
   };
 }
 
@@ -83,11 +122,19 @@ export async function getAuditStatus(
         ? await loadUnsupportedProgressHint(supabase, audit.id)
         : undefined;
 
+    const progressSignals = isTerminalState(audit.current_state)
+      ? undefined
+      : await loadProgressSignals(supabase, audit.id);
+
     // Build base response
     const response: AuditStatusResponse = {
       auditId: audit.id,
       status: audit.current_state as AuditStatusResponse["status"],
-      progress: getProgressInfo(audit.current_state, progressHint),
+      progress: getProgressInfo(
+        audit.current_state,
+        progressHint,
+        progressSignals,
+      ),
       websiteUrl: audit.website_url,
       businessName: audit.business_name,
       submittedAt: audit.created_at,

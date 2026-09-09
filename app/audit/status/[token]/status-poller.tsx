@@ -60,6 +60,8 @@ export function StatusPoller({
         const view = resolveLoadingView({
           status: json.status,
           elapsedMs: json.elapsedMs ?? 0,
+          activeGroup: json.progress?.activeGroup,
+          captureMilestone: json.progress?.captureMilestone,
         });
         if (view?.keepPolling ?? false) {
           timer = setTimeout(load, POLL_INTERVAL_MS);
@@ -94,6 +96,8 @@ export function StatusPoller({
   const view = resolveLoadingView({
     status: data.status,
     elapsedMs: data.elapsedMs ?? 0,
+    activeGroup: data.progress?.activeGroup,
+    captureMilestone: data.progress?.captureMilestone,
   });
 
   if (view) return <LoadingScreen view={view} data={data} />;
