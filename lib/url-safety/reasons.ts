@@ -8,6 +8,7 @@ export const URL_SAFETY_REASON_CODES = [
   "DNS_FAILED",
   "REDIRECT_BLOCKED",
   "TOO_MANY_REDIRECTS",
+  "PROHIBITED_CONTENT",
 ] as const;
 
 export type UrlSafetyReasonCode = (typeof URL_SAFETY_REASON_CODES)[number];
@@ -22,6 +23,7 @@ const CUSTOMER_MESSAGES: Record<UrlSafetyReasonCode, string> = {
   DNS_FAILED: "This website could not be reached.",
   REDIRECT_BLOCKED: "This website cannot be scanned.",
   TOO_MANY_REDIRECTS: "This website cannot be scanned.",
+  PROHIBITED_CONTENT: "This website cannot be scanned.",
 };
 
 export function customerMessageFor(code: UrlSafetyReasonCode): string {

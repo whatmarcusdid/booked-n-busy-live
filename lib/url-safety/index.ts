@@ -5,10 +5,18 @@ export {
   normalizeSubmittedUrl,
   type LookupAddresses,
   type ProbeRedirects,
+  type ProhibitedContentMatch,
   type RedirectProbeResult,
   type UrlSafetyDeps,
   type UrlSafetyResult,
 } from "./guard";
+export {
+  classifyProhibitedContent,
+  coveredProhibitedCategories,
+  PROHIBITED_CONTENT_CATEGORIES,
+  type ProhibitedContentCategory,
+  type ProhibitedContentResult,
+} from "./prohibited-content";
 export {
   customerMessageFor,
   URL_SAFETY_REASON_CODES,

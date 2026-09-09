@@ -11,6 +11,15 @@ import {
   customerMessageFor,
   type UrlSafetyReasonCode,
 } from "./reasons";
+import {
+  classifyProhibitedContent,
+  type ProhibitedContentResult,
+} from "./prohibited-content";
+
+export type ProhibitedContentMatch = Extract<
+  ProhibitedContentResult,
+  { blocked: true }
+>;
 
 export type LookupAddresses = (hostname: string) => Promise<string[]>;
 
@@ -40,17 +49,21 @@ export type UrlSafetyResult =
       reasonCode: UrlSafetyReasonCode;
       customerMessage: string;
       bounds: UrlSafetyBounds;
+      /** Present only for PROHIBITED_CONTENT, for structured evidence. */
+      prohibited?: ProhibitedContentMatch;
     };
 
 function fail(
   reasonCode: UrlSafetyReasonCode,
   bounds: UrlSafetyBounds,
+  prohibited?: ProhibitedContentMatch,
 ): UrlSafetyResult {
   return {
     ok: false,
     reasonCode,
     customerMessage: customerMessageFor(reasonCode),
     bounds,
+    ...(prohibited ? { prohibited } : {}),
   };
 }
 
@@ -93,7 +106,11 @@ function parseCandidate(
   bounds: UrlSafetyBounds,
 ):
   | { ok: true; url: URL; normalizedUrl: string }
-  | { ok: false; reasonCode: UrlSafetyReasonCode } {
+  | {
+      ok: false;
+      reasonCode: UrlSafetyReasonCode;
+      prohibited?: ProhibitedContentMatch;
+    } {
   let normalized: string;
   try {
     normalized = normalizeSubmittedUrl(input);
@@ -137,6 +154,14 @@ function parseCandidate(
 
   if (hostnameIsIpLiteral(host) && isBlockedIp(host)) {
     return { ok: false, reasonCode: "BLOCKED_ADDRESS" };
+  }
+
+  // Prohibited-content pre-flight (decision #11 rule 9). Runs here so it
+  // applies to the submitted URL and to every redirect destination, before
+  // any real page fetch or screenshot capture.
+  const prohibited = classifyProhibitedContent(parsed);
+  if (prohibited.blocked) {
+    return { ok: false, reasonCode: "PROHIBITED_CONTENT", prohibited };
   }
 
   return { ok: true, url: parsed, normalizedUrl: parsed.href };
@@ -187,7 +212,11 @@ async function validateUrlTarget(
       normalizedUrl: string;
       addresses: string[];
     }
-  | { ok: false; reasonCode: UrlSafetyReasonCode }
+  | {
+      ok: false;
+      reasonCode: UrlSafetyReasonCode;
+      prohibited?: ProhibitedContentMatch;
+    }
 > {
   const parsed = parseCandidate(input, bounds);
   if (!parsed.ok) return parsed;
@@ -213,7 +242,7 @@ export async function assessUrlSafety(
 
   const initial = await validateUrlTarget(input, lookup, bounds);
   if (!initial.ok) {
-    return fail(initial.reasonCode, bounds);
+    return fail(initial.reasonCode, bounds, initial.prohibited);
   }
 
   let current = initial.url.href;
@@ -258,6 +287,7 @@ export async function assessUrlSafety(
       return fail(
         next.reasonCode === "INVALID_URL" ? "REDIRECT_BLOCKED" : next.reasonCode,
         bounds,
+        next.prohibited,
       );
     }
 
