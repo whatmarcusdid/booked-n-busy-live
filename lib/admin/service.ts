@@ -3,6 +3,7 @@ import { publishReportRevision } from "../reports/publication";
 import type { AssembledReport } from "../reports/schema";
 import { validateReportForPublication } from "../reports/publication";
 import { formatOptionalLeadField } from "../leads/display";
+import { BRAND_NAME } from "../identity";
 import {
   adminAllowList,
   hashAdminEmail,
@@ -18,6 +19,12 @@ export interface AdminAuditSummary {
   currentState: string;
   publicationStatus: string | null;
   createdAt: string;
+  /** Attributed spend for the execution. Null before the audit terminates. */
+  costUsd: number | null;
+  /** Wall clock from durable execution start. Null before termination. */
+  elapsedMs: number | null;
+  /** Set only when a cost or wall-clock ceiling terminated the audit. */
+  killSwitchReason: string | null;
 }
 
 export interface AdminReviewInput {
@@ -93,9 +100,10 @@ export function createSupabaseAdminStore(): AdminStore {
       const supabase = createAdminClient();
       let query = supabase
         .from("audits")
-        .select("id, website_url, business_name, current_state, created_at", {
-          count: "exact",
-        })
+        .select(
+          "id, website_url, business_name, current_state, created_at, cost_usd, elapsed_ms, kill_switch_reason",
+          { count: "exact" },
+        )
         .order("created_at", { ascending: false })
         .range(input.offset, input.offset + input.limit - 1);
       if (input.q) {
@@ -121,6 +129,9 @@ export function createSupabaseAdminStore(): AdminStore {
           currentState: row.current_state,
           publicationStatus: report?.publication_status ?? null,
           createdAt: row.created_at,
+          costUsd: row.cost_usd == null ? null : Number(row.cost_usd),
+          elapsedMs: row.elapsed_ms == null ? null : Number(row.elapsed_ms),
+          killSwitchReason: row.kill_switch_reason ?? null,
         });
       }
       return { items, total: count ?? items.length };
@@ -138,8 +149,16 @@ export function createSupabaseAdminStore(): AdminStore {
         .select("id, first_name, business_name, phone, trade, service_area")
         .eq("id", audit.lead_id)
         .maybeSingle();
-      const [pages, evidence, criteria, pillars, reports, events, transitions] =
-        await Promise.all([
+      const [
+        pages,
+        evidence,
+        criteria,
+        pillars,
+        reports,
+        events,
+        transitions,
+        costEntries,
+      ] = await Promise.all([
           supabase.from("audit_pages").select("*").eq("audit_id", id),
           supabase.from("evidence").select("*").eq("audit_id", id),
           supabase.from("criterion_results").select("*").eq("audit_id", id),
@@ -151,6 +170,11 @@ export function createSupabaseAdminStore(): AdminStore {
             .order("revision_number", { ascending: false }),
           supabase.from("audit_events").select("*").eq("audit_id", id),
           supabase.from("audit_state_transitions").select("*").eq("audit_id", id),
+          supabase
+            .from("audit_cost_entries")
+            .select("*")
+            .eq("audit_id", id)
+            .order("created_at", { ascending: true }),
         ]);
       return {
         audit,
@@ -168,6 +192,9 @@ export function createSupabaseAdminStore(): AdminStore {
         reports: reports.data ?? [],
         events: events.data ?? [],
         transitions: transitions.data ?? [],
+        // Per-operation cost ledger, so a surprising total can be traced to
+        // the operations that produced it.
+        costEntries: costEntries.data ?? [],
       };
     },
     async currentRevisionNumber(auditId) {
@@ -275,7 +302,7 @@ export async function requestAdminMagicLink(input: {
   console.info("admin magic-link: row inserted", { emailHash });
   const sent = await input.provider.send({
     to: input.email,
-    subject: "Booked N Busy admin sign-in",
+    subject: `${BRAND_NAME} admin sign-in`,
     text: `Sign in: ${input.origin}/api/v1/admin/auth/callback?token=${issued.token}`,
     html: `<p><a href="${input.origin}/api/v1/admin/auth/callback?token=${issued.token}">Sign in</a></p>`,
     idempotencyKey: `admin-login:${issued.tokenHash}`,

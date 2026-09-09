@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { generateSecureToken, hashEmail, hmacSha256, sha256Hex } from "../crypto";
+import { canonicalOrigin } from "../identity";
 
 export const ADMIN_SESSION_COOKIE = "bnb_admin_session";
 export const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -94,6 +95,9 @@ export function hashAdminEmail(email: string): string {
 export function adminPublicOrigin(requestOrigin: string): string {
   const configured = process.env.ADMIN_APP_ORIGIN?.trim().replace(/\/$/, "");
   if (configured) return configured;
+  // Production magic links must point at the canonical origin, never at
+  // whatever host the request happened to arrive on.
+  if (process.env.NODE_ENV === "production") return canonicalOrigin();
   try {
     const url = new URL(requestOrigin);
     if (url.hostname === "127.0.0.1") {
