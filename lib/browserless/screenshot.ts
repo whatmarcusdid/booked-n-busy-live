@@ -1,3 +1,5 @@
+import { CRAWLER_USER_AGENT } from "../crawler/identity";
+import { browserlessUserAgent } from "./user-agent";
 import { URL_SAFETY_BOUNDS } from "../url-safety";
 import { type HomePageFetchReasonCode } from "./reasons";
 
@@ -101,6 +103,7 @@ export async function captureBrowserlessScreenshot(
     timeoutMs?: number;
     maxResponseBytes?: number;
     viewport?: ScreenshotViewportName;
+    userAgent?: string;
   } & BrowserlessScreenshotDeps,
 ): Promise<ScreenshotResult> {
   if (process.env.JEST_WORKER_ID && !input.fetchImpl) {
@@ -137,6 +140,7 @@ export async function captureBrowserlessScreenshot(
         gotoOptions: { timeout: timeoutMs, waitUntil: "load" },
         viewport: VIEWPORT_PRESETS[input.viewport ?? "desktop"],
         options: { type: "png", fullPage: false },
+        userAgent: browserlessUserAgent(input.userAgent ?? CRAWLER_USER_AGENT),
       }),
       signal: controller.signal,
     });

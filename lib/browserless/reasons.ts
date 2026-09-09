@@ -91,6 +91,7 @@ const SAFETY_REASON_CODES = new Set([
   "DNS_FAILED",
   "REDIRECT_BLOCKED",
   "TOO_MANY_REDIRECTS",
+  "PROHIBITED_CONTENT",
 ]);
 
 export function inferHomeFetchFailureType(

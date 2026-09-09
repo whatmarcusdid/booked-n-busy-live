@@ -1,3 +1,5 @@
+import { CRAWLER_USER_AGENT } from "../crawler/identity";
+import { browserlessUserAgent } from "./user-agent";
 import { URL_SAFETY_BOUNDS } from "../url-safety";
 import {
   inferHomeFetchFailureType,
@@ -13,6 +15,8 @@ export type FetchRenderedPage = (input: {
   url: string;
   timeoutMs: number;
   maxResponseBytes: number;
+  /** Overrides the default scanner identity (used by the rule-2 retry). */
+  userAgent?: string;
 }) => Promise<RenderedPageResult>;
 
 export type RenderedPageResult =
@@ -123,6 +127,7 @@ export async function fetchBrowserlessContent(
     url: string;
     timeoutMs?: number;
     maxResponseBytes?: number;
+    userAgent?: string;
   } & BrowserlessContentDeps,
 ): Promise<RenderedPageResult> {
   if (process.env.JEST_WORKER_ID && !input.fetchImpl) {
@@ -159,6 +164,10 @@ export async function fetchBrowserlessContent(
       body: JSON.stringify({
         url: input.url,
         gotoOptions: { timeout: timeoutMs, waitUntil: "load" },
+        // Never fall through to Browserless's stock Chromium UA — the
+        // scanner identifies itself on every request. `input.userAgent` only
+        // varies it for the rule-2 access-denied retry.
+        userAgent: browserlessUserAgent(input.userAgent ?? CRAWLER_USER_AGENT),
       }),
       signal: controller.signal,
     });

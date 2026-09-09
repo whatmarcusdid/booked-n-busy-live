@@ -1,3 +1,4 @@
+import { CRAWLER_USER_AGENT } from "../crawler/identity";
 import { URL_SAFETY_BOUNDS } from "../url-safety";
 import { type HomePageFetchReasonCode } from "./reasons";
 
@@ -171,6 +172,7 @@ export async function fetchBrowserlessPerformance(
     url: string;
     timeoutMs?: number;
     maxResponseBytes?: number;
+    userAgent?: string;
   } & BrowserlessPerformanceDeps,
 ): Promise<PerformanceResult> {
   if (process.env.JEST_WORKER_ID && !input.fetchImpl) {
@@ -210,6 +212,11 @@ export async function fetchBrowserlessPerformance(
           settings: {
             onlyCategories: ["performance"],
             disableFullPageScreenshot: true,
+            // Lighthouse's own knob for the UA it sends. Overriding it keeps
+            // the scanner identified on the Lighthouse run too; it changes
+            // only the header, not the throttling or viewport emulation the
+            // performance score depends on.
+            emulatedUserAgent: input.userAgent ?? CRAWLER_USER_AGENT,
           },
         },
       }),
