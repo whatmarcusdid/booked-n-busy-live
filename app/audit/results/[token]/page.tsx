@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { BookFindingsCall } from "@/app/book-findings-call";
-import { getAuditStatus } from "@/lib/services/audit-status-service";
+import { SELECT_A_DAY_LABEL } from "@/lib/copy/audit-results";
+import { loadAuditResults } from "@/lib/services/audit-results-service";
+import { ResultsScreen } from "./results-screen";
+import "./audit-results.css";
 
 export const dynamic = "force-dynamic";
 
@@ -20,51 +23,18 @@ export default async function AuditResultsPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const status = await getAuditStatus(token);
+  const loaded = await loadAuditResults(token);
 
-  if ("error" in status) notFound();
-  if (!status.report) notFound();
-
-  const { report } = status;
+  if (!loaded.ok) notFound();
 
   return (
-    <main>
-      <section className="card">
-        {/* TODO(figma): results layout */}
-        <h1>Your website diagnostic</h1>
-        <p>{status.businessName}</p>
-        <p>{status.websiteUrl}</p>
-        <p>
-          Overall:{" "}
-          {report.overallScore == null
-            ? "not measured"
-            : Math.round(report.overallScore * 100)}
-        </p>
-        {report.pillars?.length ? (
-          <ul>
-            {report.pillars.map((pillar) => (
-              <li key={pillar.key}>
-                {pillar.name}:{" "}
-                {pillar.score == null
-                  ? "not measured"
-                  : Math.round(pillar.score * 100)}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {report.topRecommendations?.length ? (
-          <ol>
-            {report.topRecommendations.map((row) => (
-              <li key={`${row.priority}-${row.title}`}>
-                <strong>{row.priority}</strong> {row.title} — {row.description}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p>No major issues found.</p>
-        )}
-        <BookFindingsCall statusToken={token} />
-      </section>
-    </main>
+    <ResultsScreen
+      token={token}
+      mode="hub"
+      view={loaded.view}
+      cta={
+        <BookFindingsCall statusToken={token} label={SELECT_A_DAY_LABEL} />
+      }
+    />
   );
 }
