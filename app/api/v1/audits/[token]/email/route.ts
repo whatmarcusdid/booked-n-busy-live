@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createResendProvider } from "@/lib/email/resend";
+import { resolveAuditBudget } from "@/lib/audit-workflow/pipeline";
+import { createSupabaseAuditStore } from "@/lib/audit-workflow/store";
 import { EMAIL_NOT_AVAILABLE, requestReportEmail } from "@/lib/email/service";
 import { PUBLIC_TOKEN_HEADERS } from "@/lib/http/public-headers";
 import { clientKeyFromRequest, consumeRateLimit } from "@/lib/http/rate-limit";
@@ -47,6 +49,8 @@ export async function POST(
     statusToken: token,
     email: parsed.data.email,
     provider: createResendProvider(),
+    budgetFor: (auditId) =>
+      resolveAuditBudget(createSupabaseAuditStore(), auditId),
   });
 
   if (!result.ok) {
