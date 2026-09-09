@@ -40,7 +40,7 @@ export default function HomePage() {
             Is your website helping or hurting your business?
           </h1>
           <p className="landing-subhead">
-            Get your speed, security, and SEO grade in seconds
+            Get your speed, security, and SEO grade in under 2 minutes
           </p>
           <div className="landing-testimonial">
             <span className="landing-avatar">

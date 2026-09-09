@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { TIMING_PROMISE } from "@/lib/copy/timing";
 import { MdFilledButton } from "@/lib/material/md-filled-button";
 import { MdOutlinedTextField } from "@/lib/material/md-outlined-text-field";
 
@@ -93,8 +94,8 @@ export function IntakeForm() {
         {pending ? "Starting…" : "Run My Free Audit"}
       </MdFilledButton>
       <p className="landing-disclaimer">
-        No login required. Results in under 60 seconds. Your PDF report will be
-        emailed to you automatically.
+        No login required. {TIMING_PROMISE} Your PDF report will be emailed to
+        you automatically.
       </p>
       {error ? <p role="alert">{error}</p> : null}
     </form>

@@ -1,0 +1,388 @@
+/*
+ * Audit loading screen — Figma frames 5:2587 (mobile), 30:8480 (tablet),
+ * and 30:9246 / 31:9923 / 31:10067 (the three desktop states).
+ *
+ * A light surface, unlike the dark landing hero, so the tokens are scoped to
+ * `.audit-loading` rather than added to :root — the two palettes coexist
+ * instead of one overwriting the other.
+ */
+.audit-loading {
+  /* Figma variables, named as they appear in the file. */
+  --al-text-default: #171717;
+  --al-text-subtle: #737373;
+  --al-border-default: #e5e5e5;
+  --al-action-primary: #2920a5;
+  --al-surface-page: #ffffff;
+  --al-radius: 8px;
+  --al-h1: 36px;
+  --al-h2: 28px;
+
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 44px;
+  margin: 0;
+  padding: 32px 24px;
+  color: var(--al-text-default);
+  background: var(--al-surface-page);
+}
+
+.audit-loading p,
+.audit-loading h1,
+.audit-loading h2 {
+  margin: 0;
+  color: inherit;
+}
+
+/* Nav ------------------------------------------------------------------ */
+
+.audit-loading-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 51px;
+  flex-shrink: 0;
+}
+
+.audit-loading-logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+
+.audit-loading-logo-mark,
+.audit-loading-wordmark {
+  display: block;
+  overflow: hidden;
+}
+
+.audit-loading-logo-mark {
+  width: 51px;
+  height: 51px;
+}
+
+.audit-loading-wordmark {
+  width: 94px;
+  height: 51px;
+}
+
+.audit-loading-logo-mark img,
+.audit-loading-wordmark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Secondary button, Figma component 23:4365. */
+.audit-loading-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  height: 44px;
+  padding: 10px 24px;
+  border: 3px solid var(--al-action-primary);
+  border-radius: var(--al-radius);
+  background: transparent;
+  color: var(--al-action-primary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Hero ----------------------------------------------------------------- */
+
+.audit-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 48px;
+  width: 100%;
+  max-width: 800px;
+}
+
+.audit-loading-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.audit-loading-headline {
+  width: 100%;
+  font-family: var(--font-ratch), sans-serif;
+  font-size: var(--al-h1);
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+
+.audit-loading-target {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--al-text-subtle);
+  overflow-wrap: anywhere;
+}
+
+.audit-loading-target strong {
+  font-weight: 600;
+  color: var(--al-text-default);
+}
+
+/* Icon + text row, Figma "Hero Paragraph Container". */
+.audit-loading-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+}
+
+.audit-loading-row-icon {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  overflow: hidden;
+}
+
+.audit-loading-row-icon img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.audit-loading-row-icon.is-mark img {
+  width: 30px;
+  height: 30px;
+}
+
+.audit-loading-row-text {
+  flex: 1 0 0;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--al-text-subtle);
+}
+
+.audit-loading-row-text strong {
+  font-weight: 700;
+  color: var(--al-text-default);
+}
+
+/* The slow and review status lines are themselves the message, so they read
+   at full contrast rather than as supporting text. */
+.audit-loading-status.is-slow .audit-loading-row-text,
+.audit-loading-status.is-review .audit-loading-row-text {
+  color: var(--al-text-default);
+}
+
+/* Stage list ----------------------------------------------------------- */
+
+.audit-loading-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* Done and pending stages keep the row's text indent but carry no icon, so
+   the animated mark marks exactly one thing: what is running right now. */
+.audit-loading-stage[data-progress="done"] .audit-loading-row-text {
+  color: var(--al-text-subtle);
+}
+
+.audit-loading-stage[data-progress="pending"] .audit-loading-row-text {
+  color: var(--al-text-subtle);
+  opacity: 0.55;
+}
+
+.audit-loading-stage[data-progress="active"] .audit-loading-row-text {
+  color: var(--al-text-default);
+  font-weight: 600;
+}
+
+/* Figma interaction annotation on node 5:3444: "Animate this logo". */
+.audit-loading-stage[data-progress="active"] .audit-loading-row-icon {
+  animation: audit-loading-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes audit-loading-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.88);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audit-loading-stage[data-progress="active"] .audit-loading-row-icon {
+    animation: none;
+  }
+}
+
+/* Card sections -------------------------------------------------------- */
+
+.audit-loading-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.audit-loading-section-heading {
+  width: 100%;
+  font-family: var(--font-ratch), sans-serif;
+  font-size: var(--al-h2);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.audit-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border: 3px solid var(--al-border-default);
+  border-radius: var(--al-radius);
+  background: var(--al-surface-page);
+}
+
+.audit-loading-card-body {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.audit-loading-card-icon {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+}
+
+.audit-loading-card-icon img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: block;
+  width: 38px;
+  height: 38px;
+  object-fit: cover;
+}
+
+.audit-loading-card-text {
+  flex: 1 0 0;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--al-text-subtle);
+}
+
+/* Wait card: a single 388px card in the desktop frames. */
+.audit-loading-wait .audit-loading-card {
+  width: 388px;
+  max-width: 100%;
+}
+
+.audit-loading-wait .audit-loading-card-icon img {
+  width: 40px;
+  height: 40px;
+}
+
+/* Facts: two columns on desktop, stacked below. */
+.audit-loading-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.audit-loading-facts .audit-loading-card {
+  height: 100%;
+}
+
+/*
+ * The desktop frames show two facts; mobile and tablet show three. Rendering
+ * all three and hiding the last on desktop keeps one component honest to all
+ * three frames.
+ */
+@media (min-width: 1024px) {
+  .audit-loading-fact:nth-child(3) {
+    display: none;
+  }
+}
+
+.audit-loading [role="alert"] {
+  font-size: 16px;
+  color: #b42318;
+}
+
+/* Breakpoints: mobile 0–767 | tablet 768–1023 | desktop 1024+ (default). */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .audit-loading {
+    --al-h1: 32px;
+    --al-h2: 26px;
+  }
+
+  .audit-loading-content {
+    max-width: 500px;
+  }
+
+  .audit-loading-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .audit-loading {
+    --al-h1: 30px;
+    --al-h2: 24px;
+    align-items: flex-start;
+  }
+
+  .audit-loading-content {
+    max-width: none;
+  }
+
+  .audit-loading-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  /* The nav's logo and Cancel button together exceed the narrowest phones. */
+  .audit-loading-cancel {
+    padding: 10px 16px;
+  }
+}
