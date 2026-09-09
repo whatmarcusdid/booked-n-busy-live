@@ -1,6 +1,10 @@
 {
   "fixtureVersion": 1,
   "rubricVersion": "v2",
+  "scoringBandVersion": "sb-v1",
+  "expectedCompositeScore": 0.58,
+  "expectedScoreBand": "needs_improvement",
+  "recommendationChangeNote": "Dropped process_clarity (was improve_later). It is an eligible fail in class 4, but the top eligible tier here is class 2 (direct contact path), and a lower-severity check is never promoted to fill the second slot.",
   "expectedAuditOutcome": "complete",
   "expectedCriterionOutcomes": {
     "license_insurance": "pass",
@@ -22,15 +26,31 @@
     "growth_infrastructure": 0.75
   },
   "expectedAssessmentCoverage": {
-    "trust_signals": { "assessed": 4, "not_assessed": 0 },
-    "lead_conversion": { "assessed": 4, "not_assessed": 0 },
-    "growth_infrastructure": { "assessed": 4, "not_assessed": 0 }
+    "trust_signals": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "lead_conversion": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "growth_infrastructure": {
+      "assessed": 4,
+      "not_assessed": 0
+    }
   },
   "expectedRecommendations": [
-    { "criterion_key": "phone_cta_visibility", "priority": "fix_first" },
-    { "criterion_key": "quote_booking_cta_visibility", "priority": "fix_next" },
-    { "criterion_key": "process_clarity", "priority": "improve_later" }
+    {
+      "criterion_key": "phone_cta_visibility",
+      "priority": "fix_first"
+    },
+    {
+      "criterion_key": "quote_booking_cta_visibility",
+      "priority": "fix_next"
+    }
   ],
   "humanReviewRequired": false,
-  "publicationValidation": { "eligible": true }
+  "publicationValidation": {
+    "eligible": true
+  }
 }

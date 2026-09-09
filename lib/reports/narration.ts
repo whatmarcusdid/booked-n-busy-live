@@ -225,9 +225,16 @@ export function applyNarration(
   };
 }
 
+/** Token usage the gateway reports back, for cost attribution. */
+export type ReportNarrationUsage = (usage: {
+  inputTokens?: number;
+  outputTokens?: number;
+}) => void;
+
 export async function generateNarrationViaGateway(
   input: NarrationEligibleInput,
   validationHint?: string,
+  onUsage?: ReportNarrationUsage,
 ): Promise<unknown> {
   const { generateText, Output } = await import("ai");
   const result = await generateText({
@@ -245,6 +252,10 @@ export async function generateNarrationViaGateway(
       validationHint: validationHint ?? null,
     }),
   });
+  onUsage?.({
+    inputTokens: result.usage?.inputTokens,
+    outputTokens: result.usage?.outputTokens,
+  });
   return result.output;
 }
 
@@ -253,6 +264,7 @@ export async function narrateAssembledReport(
   deps: {
     enabled?: boolean;
     generate?: GenerateNarration;
+    onUsage?: ReportNarrationUsage;
   } = {},
 ): Promise<{ source: NarrationSource; report: AssembledReport }> {
   const enabled = deps.enabled ?? isAiNarrationEnabled();
@@ -262,7 +274,10 @@ export async function narrateAssembledReport(
 
   const input = buildNarrationInput(assembled);
   assertNoRawHtml(input);
-  const generate = deps.generate ?? generateNarrationViaGateway;
+  const generate =
+    deps.generate ??
+    ((body: NarrationEligibleInput, hint?: string) =>
+      generateNarrationViaGateway(body, hint, deps.onUsage));
 
   const attempt = async (hint?: string) => {
     const raw = await generate(input, hint);

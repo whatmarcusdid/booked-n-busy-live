@@ -1,6 +1,9 @@
 {
   "fixtureVersion": 1,
   "rubricVersion": "v2",
+  "scoringBandVersion": "sb-v1",
+  "expectedCompositeScore": 0.96,
+  "expectedScoreBand": "strong_foundation",
   "expectedAuditOutcome": "complete",
   "expectedCriterionOutcomes": {
     "license_insurance": "pass",
@@ -22,11 +25,22 @@
     "growth_infrastructure": 1
   },
   "expectedAssessmentCoverage": {
-    "trust_signals": { "assessed": 4, "not_assessed": 0 },
-    "lead_conversion": { "assessed": 4, "not_assessed": 0 },
-    "growth_infrastructure": { "assessed": 4, "not_assessed": 0 }
+    "trust_signals": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "lead_conversion": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "growth_infrastructure": {
+      "assessed": 4,
+      "not_assessed": 0
+    }
   },
   "expectedRecommendations": [],
   "humanReviewRequired": false,
-  "publicationValidation": { "eligible": true }
+  "publicationValidation": {
+    "eligible": true
+  }
 }

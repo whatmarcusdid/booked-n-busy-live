@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 import { runAuditPipeline } from "@/lib/audit-workflow/pipeline";
-import { resolveMockTerminalState } from "@/lib/audit-workflow/outcome";
+import { SCORING_BAND_VERSION } from "@/lib/audit-workflow/rubric/bands";
 import { RULE_VERSION } from "@/lib/audit-workflow/rubric/model";
 import { createMemoryAuditStore } from "@/lib/audit-workflow/store";
 import { PILLARS } from "@/lib/audit-workflow/types";
@@ -179,6 +179,11 @@ export async function runGoldenFixture(fixture: LoadedFixture) {
     }),
   );
 
+  const report = store.reports[0];
+  const assembled = report?.metadata?.assembled as
+    | { overallScore: number | null; band: { key: string } | null }
+    | undefined;
+
   return {
     result,
     store,
@@ -186,9 +191,12 @@ export async function runGoldenFixture(fixture: LoadedFixture) {
     pillarScores,
     coverage,
     recommendations,
-    humanReviewRequired:
-      result === "needs_review" ||
-      resolveMockTerminalState(input.websiteUrl) === "needs_review",
+    compositeScore: assembled?.overallScore ?? null,
+    // Read from the queryable columns, not the metadata blob, so the golden
+    // suite covers what pilot analysis will actually group by.
+    scoreBand: report?.score_band ?? null,
+    scoringBandVersion: report?.scoring_band_version ?? SCORING_BAND_VERSION,
+    humanReviewRequired: result === "needs_review",
     rubricVersion: RULE_VERSION,
   };
 }

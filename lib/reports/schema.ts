@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SCORING_BAND_VERSION } from "../audit-workflow/rubric/bands";
 import { RULE_VERSION } from "../audit-workflow/rubric/model";
 
 export const assembledCheckSchema = z.object({
@@ -30,10 +31,23 @@ export const assembledRecommendationSchema = z.object({
   evidence_ids: z.array(z.string()),
 });
 
+export const assembledBandSchema = z.object({
+  key: z.enum(["strong_foundation", "needs_improvement", "critical_gaps"]),
+  label: z.enum(["Strong Foundation", "Needs Improvement", "Critical Gaps"]),
+});
+
 export const assembledReportSchema = z.object({
   ruleVersion: z.literal(RULE_VERSION),
+  /**
+   * Pinned separately from `ruleVersion`: the bands are provisional pending
+   * pilot calibration, and recalibrating them must not change what a
+   * historical report said.
+   */
+  scoringBandVersion: z.literal(SCORING_BAND_VERSION),
   websiteUrl: z.string(),
   overallScore: z.number().min(0).max(1).nullable(),
+  overallScoreDisplay: z.number().int().min(0).max(100).nullable(),
+  band: assembledBandSchema.nullable(),
   executiveSummary: z.string(),
   noMajorIssues: z.boolean(),
   pillars: z.array(assembledPillarSchema),

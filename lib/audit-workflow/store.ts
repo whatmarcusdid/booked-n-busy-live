@@ -1,5 +1,6 @@
 import { createAdminClient } from "../supabase/admin";
 import { hmacSha256 } from "../crypto";
+import { SCORING_BAND_VERSION } from "./rubric/bands";
 import { WORKFLOW_STARTED_EVENT, type AuditWorkflowState } from "./types";
 
 export interface AuditRecord {
@@ -74,6 +75,9 @@ export interface ReportInput {
   overall_score: number | null;
   executive_summary: string;
   publication_status: string;
+  /** Band boundaries in force at scan time. See the bands module. */
+  scoring_band_version?: string;
+  score_band?: string | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -89,6 +93,20 @@ export interface RecommendationInput {
   criterion_key?: string;
   /** Evidence rows that justified the recommendation (junction + legacy array). */
   evidence_ids?: string[];
+}
+
+export interface CostEntryInput {
+  operation_key: string;
+  category: string;
+  quantity: number;
+  amount_usd: number;
+  pricing_source: string;
+}
+
+export interface AuditTelemetryInput {
+  cost_usd: number;
+  elapsed_ms: number;
+  kill_switch_reason?: string | null;
 }
 
 export interface AuditWorkflowStore {
@@ -126,6 +144,19 @@ export interface AuditWorkflowStore {
   ): Promise<void>;
   claimWorkflow(auditId: string): Promise<boolean>;
   releaseWorkflowClaim(auditId: string): Promise<void>;
+  /**
+   * Records one paid operation and returns the audit's new cumulative cost.
+   * Idempotent on `operation_key`: re-charging the same key returns the
+   * existing total unchanged.
+   */
+  chargeAuditCost(auditId: string, entry: CostEntryInput): Promise<number>;
+  getAuditCostTotal(auditId: string): Promise<number>;
+  /** Durable execution start, in epoch ms. Null when never claimed. */
+  getWorkflowStartedAtMs(auditId: string): Promise<number | null>;
+  recordAuditTelemetry(
+    auditId: string,
+    telemetry: AuditTelemetryInput,
+  ): Promise<void>;
 }
 
 function isUniqueViolation(error: { code?: string } | null): boolean {
@@ -421,6 +452,9 @@ export function createSupabaseAuditStore(): AuditWorkflowStore {
             overall_score: report.overall_score,
             executive_summary: report.executive_summary,
             publication_status: report.publication_status,
+            scoring_band_version:
+              report.scoring_band_version ?? SCORING_BAND_VERSION,
+            score_band: report.score_band ?? null,
             metadata: report.metadata ?? { mock: true },
           },
           { onConflict: "audit_id,revision_number" },
@@ -491,17 +525,84 @@ export function createSupabaseAuditStore(): AuditWorkflowStore {
 
     async claimWorkflow(auditId) {
       const supabase = createAdminClient();
+      const claimedAt = new Date().toISOString();
       const { error } = await supabase.from("audit_events").insert({
         audit_id: auditId,
         event_type: WORKFLOW_STARTED_EVENT,
-        event_data: { claimed_at: new Date().toISOString() },
+        event_data: { claimed_at: claimedAt },
       });
 
       if (isUniqueViolation(error)) return false;
       if (error) {
         throw new Error(`Failed to claim workflow: ${error.message}`);
       }
+      // The wall-clock ceiling measures from here. Stamped on the audit row
+      // so any later step reads the same origin instant without having to
+      // aggregate events.
+      await supabase
+        .from("audits")
+        .update({ workflow_started_at: claimedAt })
+        .eq("id", auditId);
       return true;
+    },
+
+    async chargeAuditCost(auditId, entry) {
+      const supabase = createAdminClient();
+      const { error } = await supabase.from("audit_cost_entries").insert({
+        audit_id: auditId,
+        ...entry,
+      });
+      // A replayed step re-charges the same operation_key. Swallowing the
+      // unique violation is what makes cost accrual retry-safe.
+      if (error && !isUniqueViolation(error)) {
+        throw new Error(`Failed to record audit cost: ${error.message}`);
+      }
+      return await this.getAuditCostTotal(auditId);
+    },
+
+    async getAuditCostTotal(auditId) {
+      const supabase = createAdminClient();
+      const { data, error } = await supabase
+        .from("audit_cost_entries")
+        .select("amount_usd")
+        .eq("audit_id", auditId);
+      if (error) {
+        throw new Error(`Failed to read audit cost: ${error.message}`);
+      }
+      return (data ?? []).reduce(
+        (sum, row) => sum + Number(row.amount_usd ?? 0),
+        0,
+      );
+    },
+
+    async getWorkflowStartedAtMs(auditId) {
+      const supabase = createAdminClient();
+      const { data } = await supabase
+        .from("audits")
+        .select("workflow_started_at")
+        .eq("id", auditId)
+        .maybeSingle();
+      const value = data?.workflow_started_at;
+      if (!value) return null;
+      const parsed = Date.parse(value);
+      return Number.isNaN(parsed) ? null : parsed;
+    },
+
+    async recordAuditTelemetry(auditId, telemetry) {
+      const supabase = createAdminClient();
+      const { error } = await supabase
+        .from("audits")
+        .update({
+          cost_usd: telemetry.cost_usd,
+          elapsed_ms: telemetry.elapsed_ms,
+          ...(telemetry.kill_switch_reason !== undefined
+            ? { kill_switch_reason: telemetry.kill_switch_reason }
+            : {}),
+        })
+        .eq("id", auditId);
+      if (error) {
+        throw new Error(`Failed to record audit telemetry: ${error.message}`);
+      }
     },
 
     async releaseWorkflowClaim(auditId) {
@@ -543,6 +644,8 @@ export function createMemoryAuditStore(
     evidenceId: string;
   }>;
   workflowClaims: Set<string>;
+  costEntries: Array<CostEntryInput & { auditId: string }>;
+  telemetry: Map<string, AuditTelemetryInput>;
 } {
   const audits = new Map(seed.map((audit) => [audit.id, { ...audit }]));
   const transitions: Array<StateTransitionRow & { auditId: string }> = [];
@@ -565,6 +668,9 @@ export function createMemoryAuditStore(
     evidenceId: string;
   }> = [];
   const workflowClaims = new Set<string>();
+  const costEntries: Array<CostEntryInput & { auditId: string }> = [];
+  const telemetry = new Map<string, AuditTelemetryInput>();
+  const workflowStartedAt = new Map<string, number>();
 
   return {
     audits,
@@ -579,6 +685,29 @@ export function createMemoryAuditStore(
     recommendations,
     recommendationEvidence,
     workflowClaims,
+    costEntries,
+    telemetry,
+    async chargeAuditCost(auditId, entry) {
+      const already = costEntries.some(
+        (row) =>
+          row.auditId === auditId && row.operation_key === entry.operation_key,
+      );
+      if (!already) costEntries.push({ auditId, ...entry });
+      return costEntries
+        .filter((row) => row.auditId === auditId)
+        .reduce((sum, row) => sum + row.amount_usd, 0);
+    },
+    async getAuditCostTotal(auditId) {
+      return costEntries
+        .filter((row) => row.auditId === auditId)
+        .reduce((sum, row) => sum + row.amount_usd, 0);
+    },
+    async getWorkflowStartedAtMs(auditId) {
+      return workflowStartedAt.get(auditId) ?? null;
+    },
+    async recordAuditTelemetry(auditId, next) {
+      telemetry.set(auditId, next);
+    },
     async getAudit(auditId) {
       return audits.get(auditId) ?? null;
     },
@@ -754,6 +883,7 @@ export function createMemoryAuditStore(
     async claimWorkflow(auditId) {
       if (workflowClaims.has(auditId)) return false;
       workflowClaims.add(auditId);
+      workflowStartedAt.set(auditId, Date.now());
       return true;
     },
     async releaseWorkflowClaim(auditId) {

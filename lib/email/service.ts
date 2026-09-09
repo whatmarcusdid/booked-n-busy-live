@@ -1,3 +1,7 @@
+import {
+  COST_CEILING_REASON_CODE,
+  type AuditBudget,
+} from "../audit-workflow/budget";
 import { hashEmail } from "../crypto";
 import { hmacSha256 } from "../crypto";
 import { createAdminClient } from "../supabase/admin";
@@ -192,6 +196,39 @@ export const EMAIL_NOT_AVAILABLE = { error: "Email request not available" };
  */
 export const REPORT_READY_SUBJECT = "Your website diagnostic report is ready";
 
+/**
+ * Books the send against the audit's cost ceiling.
+ *
+ * Charged AFTER the send, because the cost is not known until the provider
+ * has accepted it — the same post-hoc pattern as any operation whose price
+ * depends on the outcome. The send itself is deliberately not gated: it
+ * happens once the scan is already terminal, so refusing it would withhold a
+ * report the customer is owed rather than prevent runaway spend.
+ *
+ * The ceiling is then re-checked, and a breach is recorded as a kill so no
+ * FURTHER paid work runs for this audit. Only the cost ceiling is consulted;
+ * a report emailed days after the scan is legitimately outside the 15-minute
+ * wall-clock window and must not be reported as a wall-clock kill.
+ */
+async function chargeSend(
+  budgetFor: ((auditId: string) => Promise<AuditBudget>) | undefined,
+  auditId: string,
+  idempotencyKey: string,
+): Promise<void> {
+  if (!budgetFor) return;
+  const budget = await budgetFor(auditId);
+  // Keyed on the delivery's own idempotency key, so a retried request
+  // charges once even though it may be attempted many times.
+  await budget.charge({
+    category: "email_send",
+    operationKey: `email:${idempotencyKey}`,
+  });
+  const verdict = await budget.costVerdict();
+  if (verdict.tripped) {
+    await budget.recordKill(verdict.reasonCode ?? COST_CEILING_REASON_CODE);
+  }
+}
+
 export async function requestReportEmail(input: {
   statusToken: string;
   email: string;
@@ -199,6 +236,12 @@ export async function requestReportEmail(input: {
   provider: TransactionalEmailProvider;
   store?: EmailDeliveryStore;
   reportUrl?: string;
+  /**
+   * Supplies the audit's cost ceiling for attribution. A factory rather than
+   * a budget, because the audit is not known until the status token has been
+   * resolved inside this function.
+   */
+  budgetFor?: (auditId: string) => Promise<AuditBudget>;
 }): Promise<
   | { ok: true; deliveryId: string; status: EmailDeliveryStatus; duplicate: boolean }
   | { ok: false; error: string; status?: number }
@@ -255,6 +298,7 @@ export async function requestReportEmail(input: {
   }
 
   await store.markStatus(queued.id, "sent", sent.providerMessageId);
+  await chargeSend(input.budgetFor, audit.auditId, idempotencyKey);
   return { ok: true, deliveryId: queued.id, status: "sent", duplicate: false };
 }
 

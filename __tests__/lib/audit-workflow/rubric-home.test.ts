@@ -1255,7 +1255,11 @@ describe("v2 home-page rubric", () => {
     });
   });
 
-  it("scores a thin FAQ heading as partial", async () => {
+  // A thin FAQ heading is the rubric's weakest keyword heuristic and carries
+  // confidence 0.6, below PRD Section 7's `low` boundary. Since the
+  // needs_review triggers landed, an uncertain positive claim like this one
+  // is escalated for a human rather than scored as a half-pass.
+  it("escalates a thin FAQ heading to needs_review instead of partial", async () => {
     const auditId = "audit-rubric-faq-thin";
     const store = seedStore(auditId, "https://example.com");
 
@@ -1273,8 +1277,16 @@ describe("v2 home-page rubric", () => {
     expect(
       store.criteria.find((row) => row.criterion_key === "faq_common_concerns"),
     ).toMatchObject({
-      score: 0.5,
-      findings: { outcome: "partial", kind: "thin_faq" },
+      score: 0,
+      findings: {
+        outcome: "needs_review",
+        kind: "thin_faq",
+        reason_code: "LOW_CONFIDENCE_POSITIVE",
+        // The suppressed answer is kept, so the pilot can later ask how often
+        // the machine's discarded verdict was right after all.
+        pre_review_outcome: "partial",
+        pre_review_confidence: 0.6,
+      },
     });
   });
 

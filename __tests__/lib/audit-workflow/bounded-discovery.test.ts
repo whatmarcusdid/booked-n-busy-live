@@ -179,8 +179,11 @@ describe("bounded category discovery", () => {
       safetyDeps: { lookup: lookupOf([PUBLIC_IP]) },
     });
 
-    expect(result).toBe("complete");
-    expect(store.audits.get(auditId)?.current_state).toBe("complete");
+    // An unsafe link is a discoverable page we could not read, so the audit
+    // resolves to Partial rather than Complete (decision #11 rule 5). It
+    // still does not FAIL — the homepage and the other pages were read.
+    expect(result).toBe("partial");
+    expect(store.audits.get(auditId)?.current_state).toBe("partial");
     const about = store.pages.find((row) => row.page_type === "about");
     const services = store.pages.find((row) => row.page_type === "services");
     expect(about?.metadata).toMatchObject({

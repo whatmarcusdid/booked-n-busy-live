@@ -64,7 +64,8 @@ export async function getAuditStatus(
         business_name,
         current_state,
         created_at,
-        updated_at
+        updated_at,
+        workflow_started_at
       `,
       )
       .eq("public_status_token_hash", tokenHash)
@@ -91,6 +92,24 @@ export async function getAuditStatus(
       businessName: audit.business_name,
       submittedAt: audit.created_at,
     };
+
+    // Elapsed processing time, measured from durable execution start so the
+    // live session's slow-audit threshold survives a page reload. Falls back
+    // to submission time for audits claimed before this column existed.
+    const startedAt = audit.workflow_started_at ?? audit.created_at;
+    if (startedAt) {
+      response.startedAt = startedAt;
+      const startedMs = Date.parse(startedAt);
+      if (!Number.isNaN(startedMs)) {
+        const endMs = isTerminalState(audit.current_state)
+          ? Date.parse(audit.updated_at)
+          : Date.now();
+        response.elapsedMs = Math.max(
+          0,
+          (Number.isNaN(endMs) ? Date.now() : endMs) - startedMs,
+        );
+      }
+    }
 
     // If complete, add report data
     if (isTerminalState(audit.current_state)) {

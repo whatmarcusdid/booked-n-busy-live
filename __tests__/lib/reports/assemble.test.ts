@@ -1,5 +1,6 @@
 import { assembleReport } from "@/lib/reports/assemble";
 import { assembledReportSchema } from "@/lib/reports/schema";
+import { SCORING_BAND_VERSION } from "@/lib/audit-workflow/rubric/bands";
 import { GOOD_SHAPE_EXECUTIVE_SUMMARY } from "@/lib/audit-workflow/recommendations";
 import { selectRecommendations } from "@/lib/audit-workflow/recommendations";
 import { loadGoldenFixtures, runGoldenFixture } from "../audit-workflow/goldens/runner";
@@ -64,9 +65,13 @@ describe("assembleReport", () => {
     });
 
     expect(assembled.noMajorIssues).toBe(false);
-    expect(assembled.recommendations).toHaveLength(3);
+    // Nine checks fail here, but the locked rules surface one primary plus at
+    // most one second from the same severity class.
+    expect(assembled.recommendations).toHaveLength(2);
     expect(assembled.pillars.every((pillar) => pillar.measured)).toBe(true);
     expect(assembled.overallScore).not.toBeNull();
+    expect(assembled.band?.key).toBe("critical_gaps");
+    expect(assembled.scoringBandVersion).toBe(SCORING_BAND_VERSION);
     expect(assembledReportSchema.safeParse(assembled).success).toBe(true);
     expect(actual.store.reports[0]?.metadata).toMatchObject({
       assembled: { noMajorIssues: false },

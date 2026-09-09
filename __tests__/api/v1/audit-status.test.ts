@@ -55,7 +55,6 @@ describe("GET /api/v1/audit-status/[token]", () => {
       progress: {
         percentage: 30,
         currentStep: "Discovering pages and content",
-        estimatedTimeRemaining: "3-5 minutes",
       },
       websiteUrl: "https://example.com",
       businessName: "Test Business",

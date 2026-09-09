@@ -1,25 +1,39 @@
+import {
+  criterionOutcome,
+  outcomeFromMockScore,
+  stableCatalogIndex,
+} from "./criterion-outcome";
+import {
+  fixFirstSeverityKey,
+  selectFixFirst,
+  type FixFirstSeverityKey,
+} from "./fix-first";
 import type { CheckOutcome } from "./rubric/model";
 import type { CriterionInput, RecommendationInput } from "./store";
-import { CRITERIA_BY_PILLAR, PILLARS, type PillarKey } from "./types";
+
+export { criterionOutcome, outcomeFromMockScore, stableCatalogIndex };
 
 /**
- * Recommendation ranking rule (PRD Section 18.11 steps 5/6/10).
+ * Recommendation ranking rule (PRD "Scoring weights and thresholds" → Fix
+ * First eligibility and severity classes).
  *
  * This is a product decision embedded in code, not a convenience sort:
  *
  * 1. Eligibility — a check becomes a candidate only when its outcome is
- *    `fail` or `partial`. `pass` is already fine. `not_assessed` and
- *    `needs_review` have no usable evidence, so they never produce a
- *    recommendation. Mock vs real does not affect eligibility.
- * 2. Rank — severity first (`fail` before `partial`), then pillar order
- *    matching the report's presentation in Section 5.4 (Trust Signals,
- *    then Lead Conversion, then Growth Infrastructure), then the check's
- *    position within that pillar's PRD catalog order (`CRITERIA_BY_PILLAR`).
- * 3. Select at most 3 candidates. Never invent filler if fewer exist.
- * 4. Priority labels — the single highest-ranked candidate is
- *    `fix_first` (only one recommendation may ever be `fix_first`). The
- *    next two, if present, are `fix_next` then `improve_later`. Zero
- *    candidates means no `fix_first` is assigned.
+ *    `fail` AND its confidence is `high`. `partial` is NOT eligible;
+ *    `pass` is already fine; `not_assessed` and `needs_review` have no
+ *    usable evidence. See `isFixFirstEligible`.
+ * 2. Rank — by locked severity class (active misconfiguration, then direct
+ *    contact path, then trust establishment, then growth/discovery), with
+ *    stable catalog order used ONLY to break ties inside one class. Pillar
+ *    order has no say; it used to drive this ranking and no longer does.
+ * 3. Surface exactly one primary recommendation, plus at most one second
+ *    and only when a distinct eligible check shares the primary's severity
+ *    class. Never invent filler, and never promote a lower-severity check
+ *    into the second slot.
+ * 4. Priority labels — the primary is `fix_first` (only one recommendation
+ *    may ever be `fix_first`); a qualifying second is `fix_next`. Zero
+ *    candidates means no recommendations at all.
  */
 export const RECOMMENDATION_PRIORITIES = [
   "fix_first",
@@ -30,60 +44,15 @@ export const RECOMMENDATION_PRIORITIES = [
 export type RecommendationPriority =
   (typeof RECOMMENDATION_PRIORITIES)[number];
 
-const SEVERITY_RANK: Record<"fail" | "partial", number> = {
-  fail: 0,
-  partial: 1,
-};
-
-const PILLAR_RANK: Record<string, number> = Object.fromEntries(
-  PILLARS.map((pillar, index) => [pillar.key, index]),
-);
-
 /**
- * Maps a continuous mock score onto the same pass / partial / fail bands
- * the real checks use for eligibility. Does not change the numeric score
- * stored on the criterion row (pillar math still uses the continuous value).
- *
- *   >= 0.70  pass     (matches existing `passed: score >= 0.7`)
- *   >= 0.50  partial  (same floor as real-check partial)
- *   else     fail
+ * Retained for callers that only need to know a check has a usable adverse
+ * outcome (narration coverage, report copy). This is NOT Fix First
+ * eligibility — that is `isFixFirstEligible`, which is strictly narrower.
  */
-export function outcomeFromMockScore(score: number): CheckOutcome {
-  if (score >= 0.7) return "pass";
-  if (score >= 0.5) return "partial";
-  return "fail";
-}
-
-export function criterionOutcome(
-  row: CriterionInput,
-): CheckOutcome | undefined {
-  const raw = row.findings.outcome;
-  if (
-    raw === "pass" ||
-    raw === "partial" ||
-    raw === "fail" ||
-    raw === "not_assessed" ||
-    raw === "needs_review"
-  ) {
-    return raw;
-  }
-  if (row.findings.mock === true && typeof row.score === "number") {
-    return outcomeFromMockScore(row.score);
-  }
-  return undefined;
-}
-
 export function isRecommendationCandidate(
   outcome: CheckOutcome | undefined,
 ): outcome is "fail" | "partial" {
   return outcome === "fail" || outcome === "partial";
-}
-
-function catalogIndex(pillar: string, key: string): number {
-  const list = CRITERIA_BY_PILLAR[pillar as PillarKey];
-  if (!list) return Number.MAX_SAFE_INTEGER;
-  const index = list.findIndex((criterion) => criterion.key === key);
-  return index < 0 ? Number.MAX_SAFE_INTEGER : index;
 }
 
 /**
@@ -109,7 +78,8 @@ export interface SelectedRecommendation {
   criterion_key: string;
   criterion_name: string;
   pillar: string;
-  outcome: "fail" | "partial";
+  outcome: "fail";
+  severity_class: FixFirstSeverityKey;
   priority: RecommendationPriority;
   sort_order: number;
   title: string;
@@ -122,36 +92,23 @@ export interface SelectedRecommendation {
 export function selectRecommendations(
   rows: CriterionInput[],
 ): SelectedRecommendation[] {
-  const candidates = rows
-    .map((row) => ({ row, outcome: criterionOutcome(row) }))
-    .filter((item): item is { row: CriterionInput; outcome: "fail" | "partial" } =>
-      isRecommendationCandidate(item.outcome),
-    )
-    .sort((a, b) => {
-      const severity = SEVERITY_RANK[a.outcome] - SEVERITY_RANK[b.outcome];
-      if (severity !== 0) return severity;
-      const pillar =
-        (PILLAR_RANK[a.row.pillar] ?? 99) - (PILLAR_RANK[b.row.pillar] ?? 99);
-      if (pillar !== 0) return pillar;
-      return (
-        catalogIndex(a.row.pillar, a.row.criterion_key) -
-        catalogIndex(b.row.pillar, b.row.criterion_key)
-      );
-    })
-    .slice(0, 3);
+  const selected = selectFixFirst(rows, (row) =>
+    stableCatalogIndex(row.criterion_key),
+  );
 
-  return candidates.map((item, index) => ({
+  return selected.map((item, index) => ({
     criterion_key: item.row.criterion_key,
     criterion_name: item.row.criterion_name,
     pillar: item.row.pillar,
-    outcome: item.outcome,
+    outcome: "fail" as const,
+    severity_class: fixFirstSeverityKey(item.row),
     priority: RECOMMENDATION_PRIORITIES[index],
     sort_order: index + 1,
     title: templateTitle(item.row.criterion_name),
-    description: templateDescription(item.row.criterion_name, item.outcome),
+    description: templateDescription(item.row.criterion_name, "fail"),
     evidence_ids: item.row.evidence_ids ?? [],
-    estimated_impact: item.outcome === "fail" ? "high" : "medium",
-    implementation_difficulty: item.outcome === "fail" ? "medium" : "low",
+    estimated_impact: "high",
+    implementation_difficulty: "medium",
   }));
 }
 

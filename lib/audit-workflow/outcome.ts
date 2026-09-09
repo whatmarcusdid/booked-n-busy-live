@@ -1,37 +1,20 @@
-import {
-  isWorkflowTerminalState,
-  type WorkflowTerminalState,
-} from "./types";
+import type { WorkflowTerminalState } from "./types";
 
 /**
- * Deterministic mock routing for the five terminal states.
- * Production M4 will replace this with real site-policy / crawl outcomes.
+ * The state an audit starts out heading for.
  *
- * Examples:
- *   https://example.com?mockOutcome=failed
- *   https://unsupported.example.test
+ * Terminal state is no longer chosen up front. `unsupported` and `failed`
+ * come from aborts during discovery/rendering, and `complete` / `partial` /
+ * `needs_review` are resolved at report finalization from actual page
+ * coverage and check outcomes — see `resolveTerminalState` in `coverage.ts`.
+ *
+ * This replaced a mock router that read the terminal state off the submitted
+ * hostname (`partial.example.test`) or a `?mockOutcome=` query param. That
+ * was test scaffolding standing in for decision #11 rule 5, and it is gone:
+ * a real audit's outcome must come from what the scanner actually observed,
+ * not from the shape of the URL someone typed.
  */
-export function resolveMockTerminalState(
-  websiteUrl: string,
-): WorkflowTerminalState {
-  try {
-    const url = new URL(websiteUrl);
-    const fromQuery = url.searchParams.get("mockOutcome");
-    if (fromQuery && isWorkflowTerminalState(fromQuery)) {
-      return fromQuery;
-    }
-
-    const host = url.hostname.toLowerCase();
-    if (host.startsWith("unsupported.")) return "unsupported";
-    if (host.startsWith("failed.")) return "failed";
-    if (host.startsWith("partial.")) return "partial";
-    if (host.startsWith("needs-review.")) return "needs_review";
-  } catch {
-    // Invalid URL already rejected by the submission API; default complete.
-  }
-
-  return "complete";
-}
+export const PROVISIONAL_TERMINAL_STATE: WorkflowTerminalState = "complete";
 
 export function writesScores(outcome: WorkflowTerminalState): boolean {
   return (

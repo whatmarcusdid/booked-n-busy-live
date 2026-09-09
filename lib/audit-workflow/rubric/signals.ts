@@ -15,10 +15,7 @@ import {
   assessProcessClarity,
   type ProcessClarityMatch,
 } from "./process-clarity";
-import {
-  assessServiceArea,
-  type ServiceAreaMatch,
-} from "./service-area";
+import { assessServiceArea, type ServiceAreaMatch } from "./service-area";
 
 export interface HomeScoringSignals {
   finalUrl: string;
@@ -91,6 +88,13 @@ export function extractHomeScoringSignals(input: {
   };
 }
 
+/**
+ * These return the outcome the signal supports on its own terms. They do NOT
+ * escalate an ambiguous signal to `needs_review` — `applyHomeRubric` is the
+ * single place that decides escalation, so that the suppressed outcome is
+ * recorded as `pre_review_outcome` rather than lost. The ambiguity itself
+ * travels on `match.ambiguity`.
+ */
 export function phoneOutcomeFromSignal(
   phone: PhoneCtaMatch | null | undefined,
 ): ReturnType<typeof assessPhoneCta>["outcome"] {

@@ -1,3 +1,5 @@
+import { fixFirstSeverityRank } from "@/lib/audit-workflow/fix-first";
+import { SCORING_BAND_VERSION } from "@/lib/audit-workflow/rubric/bands";
 import { RULE_VERSION } from "@/lib/audit-workflow/rubric/model";
 import { GOOD_SHAPE_EXECUTIVE_SUMMARY } from "@/lib/audit-workflow/recommendations";
 import { validateReportForPublication } from "@/lib/reports/publication";
@@ -25,6 +27,7 @@ describe("M5 golden fixture suite", () => {
     async (fixture) => {
       const { manifest } = fixture;
       expect(manifest.rubricVersion).toBe(RULE_VERSION);
+      expect(manifest.scoringBandVersion).toBe(SCORING_BAND_VERSION);
       expect(manifest.publicationValidation).toBeDefined();
       expect(Object.keys(manifest.expectedCriterionOutcomes).sort()).toEqual(
         [...CATALOG_KEYS].sort(),
@@ -39,16 +42,37 @@ describe("M5 golden fixture suite", () => {
       expect(actual.pillarScores).toEqual(manifest.expectedPillarScores);
       expect(actual.coverage).toEqual(manifest.expectedAssessmentCoverage);
 
+      expect(actual.compositeScore).toBe(manifest.expectedCompositeScore);
+      expect(actual.scoreBand).toBe(manifest.expectedScoreBand);
+      expect(actual.scoringBandVersion).toBe(manifest.scoringBandVersion);
+
       const recs = actual.recommendations.map((row) => ({
         criterion_key: row.criterion_key,
         priority: row.priority,
       }));
       expect(recs).toEqual(manifest.expectedRecommendations);
 
+      // Exactly one primary, plus at most one second from the same severity
+      // class. `improve_later` is unreachable under the locked rules.
+      expect(recs.length).toBeLessThanOrEqual(2);
       const fixFirst = recs.filter((row) => row.priority === "fix_first");
       expect(fixFirst.length).toBeLessThanOrEqual(1);
+      expect(recs.some((row) => row.priority === "improve_later")).toBe(false);
       if (recs.length > 0) {
         expect(recs[0].priority).toBe("fix_first");
+      }
+      if (recs.length === 2) {
+        expect(recs[1].priority).toBe("fix_next");
+        const criteria = actual.store.criteria.filter(
+          (row) => row.auditId === fixture.input.auditId,
+        );
+        const rankOf = (key: string | undefined) => {
+          const row = criteria.find((item) => item.criterion_key === key);
+          return row ? fixFirstSeverityRank(row) : null;
+        };
+        expect(rankOf(recs[0].criterion_key)).toBe(
+          rankOf(recs[1].criterion_key),
+        );
       }
 
       if (fixture.input.kind === "unsupported_access") {

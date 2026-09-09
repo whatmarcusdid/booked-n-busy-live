@@ -1,3 +1,4 @@
+import { BRAND_NAME, DEFAULT_FROM_EMAIL, SUPPORT_EMAIL } from "../identity";
 import type { SendEmailInput, SendEmailResult, TransactionalEmailProvider } from "./provider";
 
 export function createResendProvider(
@@ -11,8 +12,13 @@ export function createResendProvider(
   return {
     async send(input: SendEmailInput): Promise<SendEmailResult> {
       const apiKey = deps.apiKey ?? process.env.RESEND_API_KEY;
-      const from = deps.from ?? process.env.RESEND_FROM_EMAIL;
-      if (!apiKey || !from) {
+      // Falls back to the canonical sender so mail always comes from the
+      // brand's own domain rather than failing or using a stale address.
+      const from =
+        deps.from ??
+        process.env.RESEND_FROM_EMAIL ??
+        `${BRAND_NAME} <${DEFAULT_FROM_EMAIL}>`;
+      if (!apiKey) {
         return { ok: false, error: "Resend is not configured." };
       }
 
@@ -28,6 +34,7 @@ export function createResendProvider(
           },
           body: JSON.stringify({
             from,
+            reply_to: SUPPORT_EMAIL,
             to: [input.to],
             subject: input.subject,
             text: input.text,

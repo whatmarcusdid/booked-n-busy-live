@@ -1,6 +1,9 @@
 {
   "fixtureVersion": 1,
   "rubricVersion": "v2",
+  "scoringBandVersion": "sb-v1",
+  "expectedCompositeScore": 0.77,
+  "expectedScoreBand": "needs_improvement",
   "expectedAuditOutcome": "complete",
   "expectedCriterionOutcomes": {
     "license_insurance": "pass",
@@ -22,14 +25,31 @@
     "growth_infrastructure": 0.75
   },
   "expectedAssessmentCoverage": {
-    "trust_signals": { "assessed": 4, "not_assessed": 0 },
-    "lead_conversion": { "assessed": 3, "not_assessed": 1 },
-    "growth_infrastructure": { "assessed": 4, "not_assessed": 0 }
+    "trust_signals": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "lead_conversion": {
+      "assessed": 3,
+      "not_assessed": 1
+    },
+    "growth_infrastructure": {
+      "assessed": 4,
+      "not_assessed": 0
+    }
   },
   "expectedRecommendations": [
-    { "criterion_key": "process_clarity", "priority": "fix_first" },
-    { "criterion_key": "faq_common_concerns", "priority": "fix_next" }
+    {
+      "criterion_key": "process_clarity",
+      "priority": "fix_first"
+    },
+    {
+      "criterion_key": "faq_common_concerns",
+      "priority": "fix_next"
+    }
   ],
   "humanReviewRequired": false,
-  "publicationValidation": { "eligible": true }
+  "publicationValidation": {
+    "eligible": true
+  }
 }

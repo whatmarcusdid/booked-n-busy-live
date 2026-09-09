@@ -20,7 +20,14 @@ function row(
     pillar,
     score: outcome === "pass" ? 1 : outcome === "partial" ? 0.5 : 0,
     weight: 0.25,
-    findings: { assessed: true, outcome, mock: false },
+    // A real check's `fail` is a definitive absence, which the rubric records
+    // as high confidence. See `checkConfidence` in rubric/apply.ts.
+    findings: {
+      assessed: true,
+      outcome,
+      confidence: outcome === "fail" ? "high" : "medium",
+      mock: false,
+    },
     evidence_ids: extra.evidence_ids,
     ...extra,
   };
@@ -55,35 +62,54 @@ describe("deterministic recommendation selection", () => {
     });
   });
 
-  it("keeps the selected set real and evidence-backed when mock checks are not fail/partial", () => {
+  it("excludes partial — only a fail can lead a paid recommendation", () => {
+    const selected = selectRecommendations([
+      row("license_insurance", "License", "trust_signals", "partial", {
+        evidence_ids: ["ev-license"],
+      }),
+      row("website_performance", "Performance", "lead_conversion", "partial"),
+    ]);
+    expect(selected).toEqual([]);
+  });
+
+  it("excludes a fail whose confidence is not high", () => {
+    const selected = selectRecommendations([
+      row("license_insurance", "License", "trust_signals", "fail", {
+        findings: {
+          assessed: true,
+          outcome: "fail",
+          confidence: "medium",
+          mock: false,
+        },
+      }),
+    ]);
+    expect(selected).toEqual([]);
+  });
+
+  it("keeps the selected set real and evidence-backed, excluding mock checks", () => {
     const selected = selectRecommendations([
       {
         criterion_key: "reviews_above_fold",
         criterion_name: "Reviews Above the Fold",
         pillar: "trust_signals",
-        score: 0.86,
+        score: 0.4,
         weight: 0.25,
-        findings: { assessed: true, outcome: "pass", mock: true },
-      },
-      {
-        criterion_key: "key_person_credibility",
-        criterion_name: "Key-Person / Local Credibility",
-        pillar: "trust_signals",
-        score: 0.67,
-        weight: 0.25,
-        findings: { assessed: true, outcome: "pass", mock: true },
+        findings: { assessed: true, outcome: "fail", mock: true },
       },
       row("license_insurance", "License", "trust_signals", "fail", {
         evidence_ids: ["ev-license"],
       }),
-      row("phone_cta_visibility", "Phone", "lead_conversion", "fail", {
-        evidence_ids: ["ev-phone"],
+      row("service_area_clarity", "Service area", "trust_signals", "fail", {
+        evidence_ids: ["ev-area"],
       }),
     ]);
 
+    // The mock check fails too, and is in the same severity class, but a
+    // deterministic mock score is not direct evidence — it can never reach
+    // high confidence, so it cannot lead a paid recommendation.
     expect(selected.map((item) => item.criterion_key)).toEqual([
       "license_insurance",
-      "phone_cta_visibility",
+      "service_area_clarity",
     ]);
     expect(selected.every((item) => isRealHomeCheck(item.criterion_key))).toBe(
       true,
@@ -91,59 +117,56 @@ describe("deterministic recommendation selection", () => {
     expect(selected.every((item) => item.evidence_ids.length > 0)).toBe(true);
   });
 
-  it("ranks fail before partial, then Trust → Lead → Growth, then catalog order", () => {
+  it("ranks by severity class, not by pillar", () => {
     const selected = selectRecommendations([
-      row(
-        "faq_common_concerns",
-        "FAQ",
-        "growth_infrastructure",
-        "fail",
-      ),
-      row(
-        "website_performance",
-        "Performance",
-        "lead_conversion",
-        "partial",
-      ),
-      row(
-        "quote_booking_cta_visibility",
-        "Quote",
-        "lead_conversion",
-        "fail",
-      ),
-      row(
-        "license_insurance",
-        "License",
-        "trust_signals",
-        "fail",
-      ),
-      row(
-        "service_area_clarity",
-        "Service area",
-        "trust_signals",
-        "partial",
-      ),
+      row("faq_common_concerns", "FAQ", "growth_infrastructure", "fail"),
+      row("website_performance", "Performance", "lead_conversion", "partial"),
+      row("quote_booking_cta_visibility", "Quote", "lead_conversion", "fail"),
+      row("license_insurance", "License", "trust_signals", "fail"),
+      row("service_area_clarity", "Service area", "trust_signals", "partial"),
     ]);
 
+    // Trust Signals is the first pillar, but the direct contact path is the
+    // higher severity class, so the quote CTA leads. Nothing else shares
+    // class 2 here, so there is no second recommendation.
     expect(selected.map((item) => item.criterion_key)).toEqual([
-      "license_insurance",
       "quote_booking_cta_visibility",
-      "faq_common_concerns",
     ]);
-    expect(selected.map((item) => item.priority)).toEqual([
+    expect(selected.map((item) => item.priority)).toEqual(["fix_first"]);
+    expect(selected[0].severity_class).toBe("direct_contact_path");
+  });
+
+  it("adds a second recommendation only from the primary's own severity class", () => {
+    const shared = selectRecommendations([
+      row("license_insurance", "License", "trust_signals", "fail"),
+      row("service_area_clarity", "Service area", "trust_signals", "fail"),
+      row("faq_common_concerns", "FAQ", "growth_infrastructure", "fail"),
+    ]);
+    expect(shared.map((item) => item.criterion_key)).toEqual([
+      "license_insurance",
+      "service_area_clarity",
+    ]);
+    expect(shared.map((item) => item.priority)).toEqual([
       "fix_first",
       "fix_next",
-      "improve_later",
+    ]);
+
+    const notShared = selectRecommendations([
+      row("license_insurance", "License", "trust_signals", "fail"),
+      row("faq_common_concerns", "FAQ", "growth_infrastructure", "fail"),
+    ]);
+    expect(notShared.map((item) => item.criterion_key)).toEqual([
+      "license_insurance",
     ]);
   });
 
-  it("assigns only one fix_first and never invents filler below 3 candidates", () => {
-    const two = selectRecommendations([
+  it("assigns only one fix_first and never invents filler", () => {
+    const one = selectRecommendations([
       row("process_clarity", "Process", "lead_conversion", "fail"),
       row("faq_common_concerns", "FAQ", "growth_infrastructure", "partial"),
     ]);
-    expect(two).toHaveLength(2);
-    expect(two.map((item) => item.priority)).toEqual(["fix_first", "fix_next"]);
+    expect(one).toHaveLength(1);
+    expect(one.map((item) => item.priority)).toEqual(["fix_first"]);
 
     const none = selectRecommendations([
       row("license_insurance", "License", "trust_signals", "pass"),
@@ -152,29 +175,25 @@ describe("deterministic recommendation selection", () => {
     expect(none).toEqual([]);
   });
 
-  it("treats a mock fail the same as a real fail for eligibility and rank", () => {
+  it("gives an active misconfiguration the top severity class", () => {
     const selected = selectRecommendations([
-      {
-        criterion_key: "reviews_above_fold",
-        criterion_name: "Reviews Above the Fold",
-        pillar: "trust_signals",
-        score: 0.4,
-        weight: 0.25,
+      row("phone_cta_visibility", "Phone", "lead_conversion", "fail"),
+      row("seo_ai_search_readiness", "SEO", "growth_infrastructure", "fail", {
         findings: {
           assessed: true,
-          mock: true,
           outcome: "fail",
-          passed: false,
+          confidence: "high",
+          mock: false,
+          noindex: true,
+          active_misconfiguration: true,
         },
-      },
-      row("phone_cta_visibility", "Phone", "lead_conversion", "fail"),
+      }),
     ]);
 
     expect(selected.map((item) => item.criterion_key)).toEqual([
-      "reviews_above_fold",
-      "phone_cta_visibility",
+      "seo_ai_search_readiness",
     ]);
-    expect(selected[0].priority).toBe("fix_first");
+    expect(selected[0].severity_class).toBe("active_misconfiguration");
   });
 
   it("derives mock outcome from score when findings.outcome is missing", () => {

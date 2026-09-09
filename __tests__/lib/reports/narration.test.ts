@@ -18,7 +18,12 @@ function passingAssembled() {
       pillar: "trust_signals",
       score: 0,
       weight: 0.25,
-      findings: { assessed: true, outcome: "fail", mock: false },
+      findings: {
+        assessed: true,
+        outcome: "fail",
+        confidence: "high",
+        mock: false,
+      },
       evidence_ids: ["ev-license"],
     },
   ];
@@ -63,7 +68,12 @@ function mixedMockAndRealAssembled() {
       pillar: "trust_signals",
       score: 0,
       weight: 0.25,
-      findings: { assessed: true, outcome: "fail", mock: false },
+      findings: {
+        assessed: true,
+        outcome: "fail",
+        confidence: "high",
+        mock: false,
+      },
       evidence_ids: ["ev-license"],
     },
     {
@@ -72,7 +82,12 @@ function mixedMockAndRealAssembled() {
       pillar: "lead_conversion",
       score: 0,
       weight: 0.25,
-      findings: { assessed: true, outcome: "fail", mock: false },
+      findings: {
+        assessed: true,
+        outcome: "fail",
+        confidence: "high",
+        mock: false,
+      },
       evidence_ids: ["ev-phone"],
     },
   ];

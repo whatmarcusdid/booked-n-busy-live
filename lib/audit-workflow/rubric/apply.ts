@@ -5,11 +5,7 @@ import type {
   EvidenceInput,
   PillarInput,
 } from "../store";
-import {
-  CRITERIA_BY_PILLAR,
-  PILLARS,
-  type PillarKey,
-} from "../types";
+import { CRITERIA_BY_PILLAR, PILLARS, type PillarKey } from "../types";
 import {
   isRealHomeCheck,
   pillarSummary,
@@ -19,6 +15,12 @@ import {
   scoreAssessedChecks,
   type CheckOutcome,
 } from "./model";
+import { confidenceLabelFromScore } from "./confidence";
+import {
+  needsReviewFindings,
+  needsReviewVerdict,
+  type NeedsReviewRecord,
+} from "./needs-review";
 import {
   conversionOutcomeFromSignal,
   credentialsOutcomeFromSignal,
@@ -39,6 +41,31 @@ export function deterministicMockScore(auditId: string, key: string): number {
   const digest = createHash("sha256").update(`${auditId}:${key}`).digest();
   const unit = digest[0] / 255;
   return Math.round((0.58 + unit * 0.34) * 100) / 100;
+}
+
+/**
+ * Confidence for one check (PRD Section 7 confidence labels).
+ *
+ * `positiveConfidence` discounts for INTERPRETATION ambiguity — how sure we
+ * are that a signal we matched actually means what we think (a keyword near
+ * the top of the page is weaker evidence than a `tel:` link or JSON-LD block).
+ *
+ * A `fail` carries no such ambiguity. Every real check fails only on a
+ * definitive negative fact observed across the whole fetched homepage: no
+ * signal found at all, an explicit `noindex`, or a non-HTTPS resolved URL.
+ * That is "direct technical evidence supports the finding", so a fail is
+ * `high` confidence. This is also what makes the locked Fix First severity
+ * classes reachable — decision #12 places `phone_cta_visibility` and
+ * `quote_booking_cta_visibility` in the second-highest class, which would be
+ * unreachable if an absence-based fail were discounted to medium.
+ */
+function checkConfidence(
+  outcome: CheckOutcome,
+  positiveConfidence: number,
+): number {
+  if (outcome === "not_assessed" || outcome === "needs_review") return 0;
+  if (outcome === "fail") return 1;
+  return positiveConfidence;
 }
 
 function homeSignals(
@@ -67,6 +94,12 @@ async function writeCheckEvidence(
   store: AuditWorkflowStore,
   auditId: string,
   pageId: string | null,
+  /**
+   * Escalations keyed by criterion. The reason code is written onto the
+   * evidence row as well as the criterion, so a reviewer reading the evidence
+   * viewer sees WHY a check was escalated, not just that it was.
+   */
+  reviews: Map<string, NeedsReviewRecord>,
   item: {
     key: keyof typeof REAL_HOME_CHECKS;
     outcome: CheckOutcome;
@@ -81,6 +114,7 @@ async function writeCheckEvidence(
   },
 ): Promise<string[]> {
   const def = REAL_HOME_CHECKS[item.key];
+  const review = reviews.get(def.key);
   const evidence: EvidenceInput = {
     mock_key: `rubric:${RULE_VERSION}:${item.key}`,
     evidence_type: item.key,
@@ -97,6 +131,7 @@ async function writeCheckEvidence(
       collection_method: item.collectionMethod,
       outcome: item.outcome,
       rule_version: RULE_VERSION,
+      ...(review ? needsReviewFindings(review) : {}),
       ...item.extraMetadata,
     },
   };
@@ -109,6 +144,12 @@ function criterionRow(
   points: number,
   extraFindings: Record<string, unknown>,
   evidenceIds: string[],
+  /**
+   * Numeric confidence from the check's evidence row. Persisted onto the
+   * criterion as a label so Fix First eligibility can be evaluated without
+   * re-joining evidence at report time.
+   */
+  confidence: number,
 ): CriterionInput {
   return {
     criterion_key: def.key,
@@ -121,6 +162,8 @@ function criterionRow(
     findings: {
       assessed: outcome !== "not_assessed" && outcome !== "needs_review",
       outcome,
+      confidence: confidenceLabelFromScore(confidence),
+      confidence_score: confidence,
       rule_version: RULE_VERSION,
       mock: false,
       ...extraFindings,
@@ -170,28 +213,30 @@ export async function applyHomeRubric(input: {
     homeAssessed: assessed,
     finalUrl: signals?.finalUrl ?? (assessed ? home?.url : undefined),
   });
-  const phoneOutcome = assessed
+  // `raw*` is what the signal supports before any `needs_review` escalation.
+  // Everything downstream uses the resolved `*Check.outcome` below.
+  const rawPhoneOutcome = assessed
     ? phoneOutcomeFromSignal(signals?.phone)
     : "not_assessed";
-  const conversionOutcome = assessed
+  const rawConversionOutcome = assessed
     ? conversionOutcomeFromSignal(signals?.conversion)
     : "not_assessed";
-  const seoOutcome = assessed
+  const rawSeoOutcome = assessed
     ? seoOutcomeFromSignal(signals?.seo)
     : "not_assessed";
-  const credentialsOutcome = assessed
+  const rawCredentialsOutcome = assessed
     ? credentialsOutcomeFromSignal(signals?.credentials)
     : "not_assessed";
-  const serviceAreaOutcome = assessed
+  const rawServiceAreaOutcome = assessed
     ? serviceAreaOutcomeFromSignal(signals?.serviceArea)
     : "not_assessed";
-  const processOutcome = assessed
+  const rawProcessOutcome = assessed
     ? processClarityOutcomeFromSignal(signals?.process)
     : "not_assessed";
-  const faqOutcome = assessed
+  const rawFaqOutcome = assessed
     ? faqOutcomeFromSignal(signals?.faq)
     : "not_assessed";
-  const offerOutcome = assessed
+  const rawOfferOutcome = assessed
     ? offerOutcomeFromSignal(signals?.offer)
     : "not_assessed";
   const performance = assessWebsitePerformance({
@@ -199,16 +244,136 @@ export async function applyHomeRubric(input: {
     signal: performanceSignal(home?.metadata),
   });
 
-  const securityPoints = pointsForOutcome(security.outcome);
-  const phonePoints = pointsForOutcome(phoneOutcome);
-  const conversionPoints = pointsForOutcome(conversionOutcome);
-  const seoPoints = pointsForOutcome(seoOutcome);
-  const credentialsPoints = pointsForOutcome(credentialsOutcome);
-  const serviceAreaPoints = pointsForOutcome(serviceAreaOutcome);
-  const processPoints = pointsForOutcome(processOutcome);
-  const faqPoints = pointsForOutcome(faqOutcome);
-  const offerPoints = pointsForOutcome(offerOutcome);
-  const performancePoints = pointsForOutcome(performance.outcome);
+  /**
+   * The one place a check is escalated to `needs_review`.
+   *
+   * It runs before points, evidence, and criterion rows are derived, so all
+   * three describe the same outcome — an evidence row asserting `pass` beside
+   * a criterion row saying `needs_review` would itself be one of the
+   * contradictions trigger 2 exists to catch.
+   */
+  const reviews = new Map<string, NeedsReviewRecord>();
+
+  function resolveCheck(
+    criterionKey: string,
+    rawOutcome: CheckOutcome,
+    positiveConfidence: number,
+    extra: {
+      findings?: Record<string, unknown>;
+      signalAmbiguity?: string | null;
+    } = {},
+  ): { outcome: CheckOutcome; confidence: number } {
+    const rawConfidence = checkConfidence(rawOutcome, positiveConfidence);
+    const verdict = needsReviewVerdict({
+      criterionKey,
+      outcome: rawOutcome,
+      confidenceScore: rawConfidence,
+      findings: extra.findings,
+      signalAmbiguity: extra.signalAmbiguity,
+    });
+    if (!verdict) {
+      return { outcome: rawOutcome, confidence: rawConfidence };
+    }
+
+    reviews.set(criterionKey, {
+      ...verdict,
+      preReviewOutcome: rawOutcome,
+      preReviewConfidence: rawConfidence,
+    });
+    // An escalated check carries zero confidence, which labels as
+    // `not_assessed` — Section 7's "could not interpret the evidence", which
+    // is precisely what `needs_review` means. The suppressed number survives
+    // on the record as `pre_review_confidence`.
+    return { outcome: "needs_review", confidence: 0 };
+  }
+
+  const securityCheck = resolveCheck("security_health", security.outcome, 1, {
+    findings: { protocol: signals?.protocol },
+  });
+  const phoneCheck = resolveCheck(
+    "phone_cta_visibility",
+    rawPhoneOutcome,
+    signals?.phone?.kind === "tel_link" ? 0.95 : 0.7,
+    { signalAmbiguity: signals?.phone?.ambiguityDetail ?? null },
+  );
+  const conversionCheck = resolveCheck(
+    "quote_booking_cta_visibility",
+    rawConversionOutcome,
+    signals?.conversion?.kind === "booking_host" ? 0.9 : 0.85,
+    { signalAmbiguity: signals?.conversion?.ambiguityDetail ?? null },
+  );
+  const seoCheck = resolveCheck(
+    "seo_ai_search_readiness",
+    rawSeoOutcome,
+    0.95,
+    {
+      findings: { noindex: signals?.seo?.noindex },
+    },
+  );
+  const credentialsCheck = resolveCheck(
+    "license_insurance",
+    rawCredentialsOutcome,
+    signals?.credentials?.kind === "credential_word"
+      ? 0.85
+      : signals?.credentials?.kind === "license_number"
+        ? 0.7
+        : 0.65,
+  );
+  const serviceAreaCheck = resolveCheck(
+    "service_area_clarity",
+    rawServiceAreaOutcome,
+    signals?.serviceArea?.kind === "radius" ? 0.9 : 0.8,
+  );
+  const processCheck = resolveCheck(
+    "process_clarity",
+    rawProcessOutcome,
+    signals?.process?.kind === "response_time" ? 0.85 : 0.8,
+  );
+  const faqCheck = resolveCheck(
+    "faq_common_concerns",
+    rawFaqOutcome,
+    signals?.faq?.kind === "faqpage_jsonld"
+      ? 0.95
+      : signals?.faq?.kind === "faq_section"
+        ? 0.85
+        : 0.6,
+  );
+  const offerCheck = resolveCheck(
+    "offer_differentiation",
+    rawOfferOutcome,
+    signals?.offer?.kind === "guarantee" || signals?.offer?.kind === "financing"
+      ? 0.85
+      : 0.8,
+  );
+  const performanceCheck = resolveCheck(
+    "website_performance",
+    performance.outcome,
+    0.95,
+  );
+
+  const securityPoints = pointsForOutcome(securityCheck.outcome);
+  const phonePoints = pointsForOutcome(phoneCheck.outcome);
+  const conversionPoints = pointsForOutcome(conversionCheck.outcome);
+  const seoPoints = pointsForOutcome(seoCheck.outcome);
+  const credentialsPoints = pointsForOutcome(credentialsCheck.outcome);
+  const serviceAreaPoints = pointsForOutcome(serviceAreaCheck.outcome);
+  const processPoints = pointsForOutcome(processCheck.outcome);
+  const faqPoints = pointsForOutcome(faqCheck.outcome);
+  const offerPoints = pointsForOutcome(offerCheck.outcome);
+  const performancePoints = pointsForOutcome(performanceCheck.outcome);
+
+  // One confidence value per check, shared by its evidence row and its
+  // criterion row so the two can never disagree.
+  const securityConfidence = securityCheck.confidence;
+  const phoneConfidence = phoneCheck.confidence;
+  const conversionConfidence = conversionCheck.confidence;
+  const seoConfidence = seoCheck.confidence;
+  const credentialsConfidence = credentialsCheck.confidence;
+  const serviceAreaConfidence = serviceAreaCheck.confidence;
+  const processConfidence = processCheck.confidence;
+  const faqConfidence = faqCheck.confidence;
+  const offerConfidence = offerCheck.confidence;
+  const performanceConfidence = performanceCheck.confidence;
   const writeSecurity =
     !input.realKeys || input.realKeys.has("security_health");
   const writePhone =
@@ -229,189 +394,214 @@ export async function applyHomeRubric(input: {
     !input.realKeys || input.realKeys.has("website_performance");
 
   const securityEvidence = writeSecurity
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "security_health",
-        outcome: security.outcome,
-        value: security.value,
-        locator: security.locator,
-        snippet: security.value,
-        confidence: security.outcome === "not_assessed" ? 0 : 1,
-        collectionMethod: "home_fetch_final_url",
-        url: security.value,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "security_health",
+          outcome: securityCheck.outcome,
+          value: security.value,
+          locator: security.locator,
+          snippet: security.value,
+          confidence: securityConfidence,
+          collectionMethod: "home_fetch_final_url",
+          url: security.value,
+        },
+      )
     : [];
   const phoneEvidence = writePhone
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "phone_cta_visibility",
-        outcome: phoneOutcome,
-        value: signals?.phone?.value,
-        locator: signals?.phone?.locator,
-        snippet: signals?.phone?.snippet,
-        confidence:
-          phoneOutcome === "not_assessed"
-            ? 0
-            : signals?.phone?.kind === "tel_link"
-              ? 0.95
-              : 0.7,
-        collectionMethod: "home_html_parse",
-        url: signals?.phone?.kind === "tel_link" ? signals.phone.value : home?.url,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "phone_cta_visibility",
+          outcome: phoneCheck.outcome,
+          value: signals?.phone?.value,
+          locator: signals?.phone?.locator,
+          snippet: signals?.phone?.snippet,
+          confidence: phoneConfidence,
+          collectionMethod: "home_html_parse",
+          url:
+            signals?.phone?.kind === "tel_link"
+              ? signals.phone.value
+              : home?.url,
+        },
+      )
     : [];
   const conversionEvidence = writeConversion
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "quote_booking_cta_visibility",
-        outcome: conversionOutcome,
-        value: signals?.conversion?.value,
-        locator: signals?.conversion?.locator,
-        snippet: signals?.conversion?.snippet,
-        confidence:
-          conversionOutcome === "not_assessed"
-            ? 0
-            : signals?.conversion?.kind === "booking_host"
-              ? 0.9
-              : 0.85,
-        collectionMethod: "home_html_parse",
-        url: signals?.conversion?.kind === "booking_host"
-          ? signals.conversion.value
-          : home?.url,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "quote_booking_cta_visibility",
+          outcome: conversionCheck.outcome,
+          value: signals?.conversion?.value,
+          locator: signals?.conversion?.locator,
+          snippet: signals?.conversion?.snippet,
+          confidence: conversionConfidence,
+          collectionMethod: "home_html_parse",
+          url:
+            signals?.conversion?.kind === "booking_host"
+              ? signals.conversion.value
+              : home?.url,
+        },
+      )
     : [];
   const seoSnippet = [signals?.seo?.title, signals?.seo?.metaDescription]
     .filter(Boolean)
     .join(" | ")
     .slice(0, 80);
   const seoEvidence = writeSeo
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "seo_ai_search_readiness",
-        outcome: seoOutcome,
-        value:
-          seoOutcome === "fail" && signals?.seo?.noindex
-            ? "noindex"
-            : (signals?.seo?.title || signals?.seo?.metaDescription || seoOutcome).slice(
-                0,
-                64,
-              ),
-        locator: "head",
-        snippet: seoSnippet || seoOutcome,
-        confidence: seoOutcome === "not_assessed" ? 0 : 0.95,
-        collectionMethod: "home_html_parse",
-        url: home?.url,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "seo_ai_search_readiness",
+          outcome: seoCheck.outcome,
+          value:
+            seoCheck.outcome === "fail" && signals?.seo?.noindex
+              ? "noindex"
+              : (
+                  signals?.seo?.title ||
+                  signals?.seo?.metaDescription ||
+                  seoCheck.outcome
+                ).slice(0, 64),
+          locator: "head",
+          snippet: seoSnippet || seoCheck.outcome,
+          confidence: seoConfidence,
+          collectionMethod: "home_html_parse",
+          url: home?.url,
+        },
+      )
     : [];
   const credentialsEvidence = writeCredentials
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "license_insurance",
-        outcome: credentialsOutcome,
-        value: signals?.credentials?.value,
-        locator: signals?.credentials?.locator,
-        snippet: signals?.credentials?.snippet,
-        confidence:
-          credentialsOutcome === "not_assessed"
-            ? 0
-            : signals?.credentials?.kind === "credential_word"
-              ? 0.85
-              : signals?.credentials?.kind === "license_number"
-                ? 0.7
-                : 0.65,
-        collectionMethod: "home_html_parse",
-        url: home?.url,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "license_insurance",
+          outcome: credentialsCheck.outcome,
+          value: signals?.credentials?.value,
+          locator: signals?.credentials?.locator,
+          snippet: signals?.credentials?.snippet,
+          confidence: credentialsConfidence,
+          collectionMethod: "home_html_parse",
+          url: home?.url,
+        },
+      )
     : [];
   const serviceAreaEvidence = writeServiceArea
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "service_area_clarity",
-        outcome: serviceAreaOutcome,
-        value: signals?.serviceArea?.value,
-        locator: signals?.serviceArea?.locator,
-        snippet: signals?.serviceArea?.snippet,
-        confidence:
-          serviceAreaOutcome === "not_assessed"
-            ? 0
-            : signals?.serviceArea?.kind === "radius"
-              ? 0.9
-              : 0.8,
-        collectionMethod: "home_html_parse",
-        url: home?.url,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "service_area_clarity",
+          outcome: serviceAreaCheck.outcome,
+          value: signals?.serviceArea?.value,
+          locator: signals?.serviceArea?.locator,
+          snippet: signals?.serviceArea?.snippet,
+          confidence: serviceAreaConfidence,
+          collectionMethod: "home_html_parse",
+          url: home?.url,
+        },
+      )
     : [];
   const processEvidence = writeProcess
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "process_clarity",
-        outcome: processOutcome,
-        value: signals?.process?.value,
-        locator: signals?.process?.locator,
-        snippet: signals?.process?.snippet,
-        confidence:
-          processOutcome === "not_assessed"
-            ? 0
-            : signals?.process?.kind === "response_time"
-              ? 0.85
-              : 0.8,
-        collectionMethod: "home_html_parse",
-        url: home?.url,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "process_clarity",
+          outcome: processCheck.outcome,
+          value: signals?.process?.value,
+          locator: signals?.process?.locator,
+          snippet: signals?.process?.snippet,
+          confidence: processConfidence,
+          collectionMethod: "home_html_parse",
+          url: home?.url,
+        },
+      )
     : [];
   const faqEvidence = writeFaq
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "faq_common_concerns",
-        outcome: faqOutcome,
-        value: signals?.faq?.value,
-        locator: signals?.faq?.locator,
-        snippet: signals?.faq?.snippet,
-        confidence:
-          faqOutcome === "not_assessed"
-            ? 0
-            : signals?.faq?.kind === "faqpage_jsonld"
-              ? 0.95
-              : signals?.faq?.kind === "faq_section"
-                ? 0.85
-                : 0.6,
-        collectionMethod: "home_html_parse",
-        url: home?.url,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "faq_common_concerns",
+          outcome: faqCheck.outcome,
+          value: signals?.faq?.value,
+          locator: signals?.faq?.locator,
+          snippet: signals?.faq?.snippet,
+          confidence: faqConfidence,
+          collectionMethod: "home_html_parse",
+          url: home?.url,
+        },
+      )
     : [];
   const offerEvidence = writeOffer
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "offer_differentiation",
-        outcome: offerOutcome,
-        value: signals?.offer?.value,
-        locator: signals?.offer?.locator,
-        snippet: signals?.offer?.snippet,
-        confidence:
-          offerOutcome === "not_assessed"
-            ? 0
-            : signals?.offer?.kind === "guarantee" ||
-                signals?.offer?.kind === "financing"
-              ? 0.85
-              : 0.8,
-        collectionMethod: "home_html_parse",
-        url: home?.url,
-      })
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "offer_differentiation",
+          outcome: offerCheck.outcome,
+          value: signals?.offer?.value,
+          locator: signals?.offer?.locator,
+          snippet: signals?.offer?.snippet,
+          confidence: offerConfidence,
+          collectionMethod: "home_html_parse",
+          url: home?.url,
+        },
+      )
     : [];
   const performanceEvidence = writePerformance
-    ? await writeCheckEvidence(input.store, input.auditId, home?.id ?? null, {
-        key: "website_performance",
-        outcome: performance.outcome,
-        value:
-          typeof performance.signal?.score === "number"
-            ? String(performance.signal.score)
-            : performance.signal?.reason_code,
-        locator: "categories.performance.score",
-        snippet:
-          typeof performance.signal?.score === "number"
-            ? `performance score ${performance.signal.score}`
-            : performance.signal?.reason_code,
-        confidence: performance.outcome === "not_assessed" ? 0 : 0.95,
-        collectionMethod: "browserless_performance",
-        url: home?.url,
-        extraMetadata: {
-          score: performance.signal?.score,
-          lcp_ms: performance.signal?.lcp_ms,
-          tbt_ms: performance.signal?.tbt_ms,
-          cls: performance.signal?.cls,
-          reason_code: performance.signal?.reason_code,
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "website_performance",
+          outcome: performanceCheck.outcome,
+          value:
+            typeof performance.signal?.score === "number"
+              ? String(performance.signal.score)
+              : performance.signal?.reason_code,
+          locator: "categories.performance.score",
+          snippet:
+            typeof performance.signal?.score === "number"
+              ? `performance score ${performance.signal.score}`
+              : performance.signal?.reason_code,
+          confidence: performanceConfidence,
+          collectionMethod: "browserless_performance",
+          url: home?.url,
+          extraMetadata: {
+            score: performance.signal?.score,
+            lcp_ms: performance.signal?.lcp_ms,
+            tbt_ms: performance.signal?.tbt_ms,
+            cls: performance.signal?.cls,
+            reason_code: performance.signal?.reason_code,
+          },
         },
-      })
+      )
     : [];
 
   const realRows: CriterionInput[] = [];
@@ -419,13 +609,14 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.security_health,
-        security.outcome,
+        securityCheck.outcome,
         securityPoints ?? 0,
         {
           protocol: security.signal?.protocol,
           final_url: security.value,
         },
         securityEvidence,
+        securityConfidence,
       ),
     );
   }
@@ -433,7 +624,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.phone_cta_visibility,
-        phoneOutcome,
+        phoneCheck.outcome,
         phonePoints ?? 0,
         {
           kind: signals?.phone?.kind,
@@ -441,6 +632,7 @@ export async function applyHomeRubric(input: {
           prominent: signals?.phone?.prominent,
         },
         phoneEvidence,
+        phoneConfidence,
       ),
     );
   }
@@ -448,7 +640,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.quote_booking_cta_visibility,
-        conversionOutcome,
+        conversionCheck.outcome,
         conversionPoints ?? 0,
         {
           kind: signals?.conversion?.kind,
@@ -456,6 +648,7 @@ export async function applyHomeRubric(input: {
           prominent: signals?.conversion?.prominent,
         },
         conversionEvidence,
+        conversionConfidence,
       ),
     );
   }
@@ -463,7 +656,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.seo_ai_search_readiness,
-        seoOutcome,
+        seoCheck.outcome,
         seoPoints ?? 0,
         {
           title: signals?.seo?.title,
@@ -471,8 +664,15 @@ export async function applyHomeRubric(input: {
           meta_description: signals?.seo?.metaDescription,
           meta_ok: signals?.seo?.metaOk,
           noindex: signals?.seo?.noindex,
+          // A `noindex` directive is something the site actively configured
+          // to suppress itself, not a missing signal. Decision #12 gives
+          // active misconfigurations the top Fix First severity class
+          // regardless of which pillar the check belongs to.
+          active_misconfiguration:
+            seoCheck.outcome === "fail" && signals?.seo?.noindex === true,
         },
         seoEvidence,
+        seoConfidence,
       ),
     );
   }
@@ -480,7 +680,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.license_insurance,
-        credentialsOutcome,
+        credentialsCheck.outcome,
         credentialsPoints ?? 0,
         {
           kind: signals?.credentials?.kind,
@@ -488,6 +688,7 @@ export async function applyHomeRubric(input: {
           prominent: signals?.credentials?.prominent,
         },
         credentialsEvidence,
+        credentialsConfidence,
       ),
     );
   }
@@ -495,7 +696,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.service_area_clarity,
-        serviceAreaOutcome,
+        serviceAreaCheck.outcome,
         serviceAreaPoints ?? 0,
         {
           kind: signals?.serviceArea?.kind,
@@ -503,6 +704,7 @@ export async function applyHomeRubric(input: {
           prominent: signals?.serviceArea?.prominent,
         },
         serviceAreaEvidence,
+        serviceAreaConfidence,
       ),
     );
   }
@@ -510,7 +712,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.process_clarity,
-        processOutcome,
+        processCheck.outcome,
         processPoints ?? 0,
         {
           kind: signals?.process?.kind,
@@ -518,6 +720,7 @@ export async function applyHomeRubric(input: {
           prominent: signals?.process?.prominent,
         },
         processEvidence,
+        processConfidence,
       ),
     );
   }
@@ -525,7 +728,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.faq_common_concerns,
-        faqOutcome,
+        faqCheck.outcome,
         faqPoints ?? 0,
         {
           kind: signals?.faq?.kind,
@@ -534,6 +737,7 @@ export async function applyHomeRubric(input: {
           pair_count: signals?.faq?.pairCount,
         },
         faqEvidence,
+        faqConfidence,
       ),
     );
   }
@@ -541,7 +745,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.offer_differentiation,
-        offerOutcome,
+        offerCheck.outcome,
         offerPoints ?? 0,
         {
           kind: signals?.offer?.kind,
@@ -549,6 +753,7 @@ export async function applyHomeRubric(input: {
           prominent: signals?.offer?.prominent,
         },
         offerEvidence,
+        offerConfidence,
       ),
     );
   }
@@ -556,7 +761,7 @@ export async function applyHomeRubric(input: {
     realRows.push(
       criterionRow(
         REAL_HOME_CHECKS.website_performance,
-        performance.outcome,
+        performanceCheck.outcome,
         performancePoints ?? 0,
         {
           score: performance.signal?.score,
@@ -566,6 +771,7 @@ export async function applyHomeRubric(input: {
           reason_code: performance.signal?.reason_code,
         },
         performanceEvidence,
+        performanceConfidence,
       ),
     );
   }
@@ -587,7 +793,18 @@ export async function applyHomeRubric(input: {
     }
   }
 
-  const all = [...realRows, ...mockRows];
+  // Reason codes are merged in one place rather than at each of the ten
+  // criterion call sites, so a new check cannot be added without them.
+  const reviewedRows = realRows.map((row) => {
+    const review = reviews.get(row.criterion_key);
+    if (!review) return row;
+    return {
+      ...row,
+      findings: { ...row.findings, ...needsReviewFindings(review) },
+    };
+  });
+
+  const all = [...reviewedRows, ...mockRows];
   await input.store.upsertCriteria(input.auditId, all);
 
   const pillars: PillarInput[] = PILLARS.flatMap((pillar) => {
@@ -607,7 +824,10 @@ export async function applyHomeRubric(input: {
       return row.findings.assessed === true ? row.score : null;
     });
     const { score, assessedCount } = scoreAssessedChecks(points);
-    if (assessedCount === 0 && !rows.some((row) => isRealHomeCheck(row.criterion_key))) {
+    if (
+      assessedCount === 0 &&
+      !rows.some((row) => isRealHomeCheck(row.criterion_key))
+    ) {
       return [];
     }
     return [

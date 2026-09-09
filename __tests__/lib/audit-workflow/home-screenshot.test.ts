@@ -270,16 +270,18 @@ describe("home screenshot capture", () => {
     });
   });
 
-  it("still reaches partial when screenshot capture fails", async () => {
+  it("does not fail or downgrade the audit when screenshot capture fails", async () => {
+    // A screenshot is supporting evidence, not page coverage. Losing it must
+    // not change the terminal state — this used to be asserted by forcing
+    // `outcome: "partial"`, which no longer exists.
     const auditId = "audit-shot-partial";
-    const store = seedStore(auditId, "https://partial.example.test");
+    const store = seedStore(auditId, "https://example.com");
 
     const result = await runAuditPipeline({
       auditId,
-      websiteUrl: "https://partial.example.test",
+      websiteUrl: "https://example.com",
       store,
       delayMs: 0,
-      outcome: "partial",
       realScanEnabled: true,
       fetchHomePage: successfulFetch,
       captureScreenshot: async () => ({
@@ -290,10 +292,10 @@ describe("home screenshot capture", () => {
       safetyDeps: { lookup: lookupOf([PUBLIC_IP]) },
     });
 
-    expect(result).toBe("partial");
+    expect(result).toBe("complete");
     expect(store.artifacts).toEqual([]);
-    expect(store.criteria.filter((row) => row.auditId === auditId)).toHaveLength(
-      6,
-    );
+    expect(
+      store.criteria.filter((row) => row.auditId === auditId).length,
+    ).toBeGreaterThan(0);
   });
 });

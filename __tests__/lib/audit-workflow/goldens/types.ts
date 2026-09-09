@@ -45,6 +45,21 @@ export interface AssessmentCoverage {
 export interface GoldenManifest {
   fixtureVersion: number;
   rubricVersion: string;
+  /** Band boundaries in force when the expectations below were locked. */
+  scoringBandVersion: string;
+  /** Equal-weight composite over measured pillars, and its band. */
+  expectedCompositeScore: number | null;
+  expectedScoreBand:
+    | "strong_foundation"
+    | "needs_improvement"
+    | "critical_gaps"
+    | null;
+  /**
+   * Why `expectedRecommendations` changed when the locked Fix First
+   * eligibility and severity classes replaced the old pillar-order ranking.
+   * Absent when this fixture's recommendations were unaffected.
+   */
+  recommendationChangeNote?: string;
   expectedAuditOutcome: WorkflowTerminalState;
   expectedCriterionOutcomes: Record<CatalogKey, CheckOutcome>;
   expectedPillarScores: {

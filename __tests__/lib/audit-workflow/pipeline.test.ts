@@ -14,18 +14,19 @@ function seedStore(auditId: string, websiteUrl: string) {
 }
 
 describe("runAuditPipeline", () => {
-  it.each(WORKFLOW_TERMINAL_STATES)(
-    "reaches terminal state %s via its mock path",
+  // `complete`, `partial` and `needs_review` are no longer selectable: they
+  // are resolved from page coverage and check outcomes at report
+  // finalization. See coverage.test.ts for those. Only the non-reporting
+  // states can still be driven directly, and they come from stage aborts.
+  it.each(["failed", "unsupported"] as const)(
+    "reaches terminal state %s",
     async (outcome) => {
       const auditId = `audit-${outcome}`;
-      const store = seedStore(
-        auditId,
-        `https://example.com/?mockOutcome=${outcome}`,
-      );
+      const store = seedStore(auditId, "https://example.com/");
 
       const result = await runAuditPipeline({
         auditId,
-        websiteUrl: `https://example.com/?mockOutcome=${outcome}`,
+        websiteUrl: "https://example.com/",
         store,
         delayMs: 0,
         outcome,
@@ -35,6 +36,26 @@ describe("runAuditPipeline", () => {
       expect(store.audits.get(auditId)?.current_state).toBe(outcome);
     },
   );
+
+  it("no longer reads the terminal state off the submitted URL", async () => {
+    // The old mock router returned `partial` for a `partial.` hostname and
+    // for `?mockOutcome=partial`. Both must now be inert.
+    for (const websiteUrl of [
+      "https://partial.example.test/",
+      "https://example.com/?mockOutcome=needs_review",
+      "https://unsupported.example.test/",
+    ]) {
+      const auditId = `audit-inert-${websiteUrl}`;
+      const store = seedStore(auditId, websiteUrl);
+      const result = await runAuditPipeline({
+        auditId,
+        websiteUrl,
+        store,
+        delayMs: 0,
+      });
+      expect(result).toBe("complete");
+    }
+  });
 
   it("writes a complete ordered transition history for a full run", async () => {
     const auditId = "audit-history";
@@ -86,31 +107,29 @@ describe("runAuditPipeline", () => {
     ]);
   });
 
-  it("does not fabricate scores for unassessed criteria on partial", async () => {
-    const auditId = "audit-partial";
-    const store = seedStore(auditId, "https://partial.example.test");
+  it("attempts every check rather than pre-selecting by outcome", async () => {
+    // Coverage used to be decided by the pre-set outcome, which sliced two
+    // checks per pillar for `partial`. The outcome is no longer known at
+    // scoring time, so all 12 are attempted and each check reports its own
+    // assessability.
+    const auditId = "audit-coverage";
+    const store = seedStore(auditId, "https://example.com/");
 
     await runAuditPipeline({
       auditId,
-      websiteUrl: "https://partial.example.test",
+      websiteUrl: "https://example.com/",
       store,
       delayMs: 0,
-      outcome: "partial",
     });
 
-    const assessedKeys = assessedCriteriaForOutcome("partial").map(
-      (row) => row.key,
-    );
-    expect(store.criteria).toHaveLength(6);
-    expect(store.criteria.map((row) => row.criterion_key).sort()).toEqual(
-      [...assessedKeys].sort(),
-    );
-    expect(store.criteria.every((row) => row.findings.assessed === true)).toBe(
-      true,
-    );
+    expect(assessedCriteriaForOutcome("complete")).toHaveLength(12);
+    expect(assessedCriteriaForOutcome("partial")).toHaveLength(12);
+    expect(assessedCriteriaForOutcome("failed")).toHaveLength(0);
+
+    expect(store.criteria).toHaveLength(12);
     expect(
       store.criteria.some((row) => row.criterion_key === "website_performance"),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("writes no scores or report for failed and unsupported", async () => {

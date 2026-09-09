@@ -3,6 +3,11 @@ import {
   GOOD_SHAPE_EXECUTIVE_SUMMARY,
   type SelectedRecommendation,
 } from "../audit-workflow/recommendations";
+import {
+  SCORING_BAND_VERSION,
+  displayScore,
+  scoreBand,
+} from "../audit-workflow/rubric/bands";
 import { RULE_VERSION, roundScore } from "../audit-workflow/rubric/model";
 import type { CriterionInput, PillarInput } from "../audit-workflow/store";
 import { PILLARS } from "../audit-workflow/types";
@@ -50,6 +55,11 @@ export function assembleReport(input: AssembleReportInput): AssembledReport {
     };
   });
 
+  // Equal-weight composite: the three pillars each carry ~33%. Implemented as
+  // an unweighted mean over the MEASURED pillars, so an unmeasured pillar is
+  // excluded and its weight redistributes across the rest, rather than being
+  // folded in as a zero. That keeps the composite consistent with the pillar
+  // rule that unavailable evidence is never converted into 0.00.
   const measuredScores = pillars
     .map((pillar) => pillar.score)
     .filter((value): value is number => value != null);
@@ -60,6 +70,7 @@ export function assembleReport(input: AssembleReportInput): AssembledReport {
           measuredScores.reduce((sum, value) => sum + value, 0) /
             measuredScores.length,
         );
+  const band = scoreBand(overallScore);
 
   const noMajorIssues = input.recommendations.length === 0;
   const executiveSummary =
@@ -70,8 +81,11 @@ export function assembleReport(input: AssembleReportInput): AssembledReport {
 
   const report = {
     ruleVersion: RULE_VERSION,
+    scoringBandVersion: SCORING_BAND_VERSION,
     websiteUrl: input.websiteUrl,
     overallScore,
+    overallScoreDisplay: overallScore == null ? null : displayScore(overallScore),
+    band: band ? { key: band.key, label: band.label } : null,
     executiveSummary,
     noMajorIssues,
     pillars,
