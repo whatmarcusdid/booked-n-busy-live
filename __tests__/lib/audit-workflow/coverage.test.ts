@@ -1,4 +1,5 @@
 import { readFileSync } from "fs";
+import { relative } from "path";
 import { PAGE_COVERAGE_RESOLVED_EVENT } from "@/lib/audit-workflow/mock-stages";
 import { runAuditPipeline } from "@/lib/audit-workflow/pipeline";
 import { createMemoryAuditStore } from "@/lib/audit-workflow/store";
@@ -280,10 +281,18 @@ describe("the mock hostname override is gone", () => {
 
   it("is referenced nowhere in the codebase", () => {
     const { execSync } = require("child_process");
-    const hits = execSync(
-      "git grep -l resolveMockTerminalState -- . || true",
-      { cwd: process.cwd(), encoding: "utf8" },
-    ).trim();
-    expect(hits).toBe("");
+    // `git grep` searches tracked files, so this file matches itself: it
+    // names the symbol in order to assert its absence. Filtered out here
+    // rather than with an exclude pathspec, because a malformed pathspec
+    // makes git exit non-zero and `|| true` would turn that into a pass.
+    const self = relative(process.cwd(), __filename);
+    const hits = execSync("git grep -l resolveMockTerminalState -- . || true", {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    })
+      .split("\n")
+      .map((line: string) => line.trim())
+      .filter((line: string) => line !== "" && line !== self);
+    expect(hits).toEqual([]);
   });
 });
