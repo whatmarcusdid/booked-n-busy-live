@@ -382,7 +382,13 @@ describe("v2 home-page rubric", () => {
       store.criteria.find((row) => row.criterion_key === "security_health"),
     ).toMatchObject({
       score: 0,
-      findings: { outcome: "fail", assessed: true, protocol: "http" },
+      findings: {
+        outcome: "fail",
+        assessed: true,
+        protocol: "http",
+        reason_code: "https_absent",
+        active_misconfiguration: false,
+      },
     });
     expect(
       store.criteria.find((row) => row.criterion_key === "phone_cta_visibility")?.findings

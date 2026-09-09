@@ -135,6 +135,21 @@ describe("Fix First severity classes", () => {
     ).toEqual(["seo_ai_search_readiness"]);
   });
 
+  it("ranks an HTTPS downgrade above plain HTTPS absence", () => {
+    const downgrade = check("security_health", "fail", "high", {
+      reason_code: "https_downgrade_redirect",
+      active_misconfiguration: true,
+    });
+    const absent = check("security_health", "fail", "high", {
+      reason_code: "https_absent",
+    });
+
+    expect(fixFirstSeverityKey(downgrade)).toBe("active_misconfiguration");
+    expect(fixFirstSeverityRank(downgrade)).toBe(1);
+    expect(fixFirstSeverityKey(absent)).toBe("growth_discovery");
+    expect(fixFirstSeverityRank(absent)).toBe(4);
+  });
+
   it("does not rank by pillar", () => {
     // Trust Signals is the first pillar, but a contact-path failure in the
     // second pillar must still win. This is the exact case the old

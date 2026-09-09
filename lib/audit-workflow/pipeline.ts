@@ -13,6 +13,7 @@ import {
 } from "./budget";
 import type { ArtifactStorage } from "../storage/audit-artifacts";
 import type { UrlSafetyDeps } from "../url-safety";
+import type { ProbeHttpsHop } from "./https-probe";
 import {
   createSupabaseAuditStore,
   type AuditWorkflowStore,
@@ -33,6 +34,7 @@ export interface RunAuditPipelineInput {
   realScanEnabled?: boolean;
   fetchHomePage?: FetchRenderedPage;
   fetchRobots?: FetchRobotsTxt;
+  probeHttpsHop?: ProbeHttpsHop;
   captureScreenshot?: CaptureScreenshot;
   fetchPerformance?: FetchPagePerformance;
   artifactStorage?: ArtifactStorage;
@@ -63,6 +65,7 @@ export async function applyStage(input: {
   realScanEnabled?: boolean;
   fetchHomePage?: FetchRenderedPage;
   fetchRobots?: FetchRobotsTxt;
+  probeHttpsHop?: ProbeHttpsHop;
   captureScreenshot?: CaptureScreenshot;
   fetchPerformance?: FetchPagePerformance;
   artifactStorage?: ArtifactStorage;
@@ -84,6 +87,7 @@ export async function applyStage(input: {
     realScanEnabled: input.realScanEnabled,
     fetchHomePage: input.fetchHomePage,
     fetchRobots: input.fetchRobots,
+    probeHttpsHop: input.probeHttpsHop,
     captureScreenshot: input.captureScreenshot,
     fetchPerformance: input.fetchPerformance,
     artifactStorage: input.artifactStorage,
@@ -148,6 +152,7 @@ export async function runAuditPipeline(
     realScanEnabled: input.realScanEnabled,
     fetchHomePage: input.fetchHomePage,
     fetchRobots: input.fetchRobots,
+    probeHttpsHop: input.probeHttpsHop,
     captureScreenshot: input.captureScreenshot,
     fetchPerformance: input.fetchPerformance,
     artifactStorage: input.artifactStorage,

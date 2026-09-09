@@ -5,7 +5,10 @@ import {
 } from "./conversion-paths";
 import { assessPhoneCta, type PhoneCtaMatch } from "./phone-cta";
 import { assessSeoBasics, type SeoBasicsSignal } from "./seo-basics";
-import { assessSecurityHealth } from "./security-health";
+import {
+  assessSecurityHealth,
+  type SecurityHealthProbe,
+} from "./security-health";
 import { assessFaq, type FaqMatch } from "./faq";
 import {
   assessOfferDifferentiation,
@@ -21,6 +24,7 @@ export interface HomeScoringSignals {
   finalUrl: string;
   protocol: "http" | "https" | "other";
   httpStatus: number;
+  securityProbe?: SecurityHealthProbe | null;
   phone: PhoneCtaMatch | null;
   conversion: ConversionPathMatch | null;
   seo: SeoBasicsSignal | null;

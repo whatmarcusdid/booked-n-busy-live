@@ -53,6 +53,7 @@ import {
   mockKeysForAffectedPillars,
 } from "./rubric/apply";
 import { extractHomeScoringSignals } from "./rubric/signals";
+import { probeHttpsScheme, type ProbeHttpsHop } from "./https-probe";
 import { persistCriteriaByGroup } from "./progress-groups";
 import { isRealHomeCheck, RULE_VERSION } from "./rubric/model";
 import {
@@ -427,6 +428,7 @@ async function discoverPages(input: {
   realScanEnabled?: boolean;
   fetchHomePage?: FetchRenderedPage;
   fetchRobots?: FetchRobotsTxt;
+  probeHttpsHop?: ProbeHttpsHop;
   budget?: AuditBudget;
 }): Promise<StageWorkResult> {
   const safety = await assessUrlSafety(input.websiteUrl, input.safetyDeps);
@@ -596,13 +598,35 @@ async function discoverPages(input: {
     pageType: "home",
     fallbackTitle: "Home",
   });
+  const scoringSignals = extractHomeScoringSignals({
+    html: fetched.html,
+    finalUrl: fetched.finalUrl,
+    status: fetched.status,
+  });
+  // Jest skips the live probe unless a test injects hopFetch — same
+  // pattern as Browserless, so existing fixtures do not hit the network.
+  const shouldProbe =
+    Boolean(input.probeHttpsHop) || !process.env.JEST_WORKER_ID;
+  if (shouldProbe) {
+    try {
+      const securityProbe = await probeHttpsScheme({
+        websiteUrl: fetchSafety.normalizedUrl,
+        timeoutMs: fetchSafety.bounds.maxFetchDurationMs,
+        maxRedirects: fetchSafety.bounds.maxRedirects,
+        safetyDeps: input.safetyDeps,
+        hopFetch: input.probeHttpsHop,
+      });
+      if (securityProbe) {
+        scoringSignals.securityProbe = securityProbe;
+      }
+    } catch {
+      // Probe failure must not abort a successful home fetch. Scoring
+      // falls back to the rendered final URL.
+    }
+  }
   home.metadata = {
     ...home.metadata,
-    scoring_signals: extractHomeScoringSignals({
-      html: fetched.html,
-      finalUrl: fetched.finalUrl,
-      status: fetched.status,
-    }),
+    scoring_signals: scoringSignals,
   };
 
   const discovered = selectCategoryUrls(
@@ -755,6 +779,7 @@ export async function applyMockStageWork(input: {
   realScanEnabled?: boolean;
   fetchHomePage?: FetchRenderedPage;
   fetchRobots?: FetchRobotsTxt;
+  probeHttpsHop?: ProbeHttpsHop;
   captureScreenshot?: CaptureScreenshot;
   fetchPerformance?: FetchPagePerformance;
   artifactStorage?: ArtifactStorage;

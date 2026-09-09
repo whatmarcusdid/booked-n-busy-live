@@ -34,7 +34,7 @@ import {
 } from "./signals";
 import { outcomeFromMockScore } from "../recommendations";
 import { persistCriteriaByGroup } from "../progress-groups";
-import { assessSecurityHealth } from "./security-health";
+import { assessSecurityHealth, isHttpsDowngrade } from "./security-health";
 import { assessWebsitePerformance } from "./website-performance";
 import type { PerformanceSignal } from "./website-performance";
 
@@ -213,6 +213,7 @@ export async function applyHomeRubric(input: {
   const security = assessSecurityHealth({
     homeAssessed: assessed,
     finalUrl: signals?.finalUrl ?? (assessed ? home?.url : undefined),
+    probe: signals?.securityProbe,
   });
   // `raw*` is what the signal supports before any `needs_review` escalation.
   // Everything downstream uses the resolved `*Check.outcome` below.
@@ -289,7 +290,10 @@ export async function applyHomeRubric(input: {
   }
 
   const securityCheck = resolveCheck("security_health", security.outcome, 1, {
-    findings: { protocol: signals?.protocol },
+    findings: {
+      protocol: security.signal?.protocol ?? signals?.protocol,
+      reason_code: security.signal?.reasonCode,
+    },
   });
   const phoneCheck = resolveCheck(
     "phone_cta_visibility",
@@ -407,8 +411,17 @@ export async function applyHomeRubric(input: {
           locator: security.locator,
           snippet: security.value,
           confidence: securityConfidence,
-          collectionMethod: "home_fetch_final_url",
+          collectionMethod:
+            security.locator === "https_scheme_probe"
+              ? "https_scheme_probe"
+              : "home_fetch_final_url",
           url: security.value,
+          extraMetadata: {
+            reason_code: security.signal?.reasonCode,
+            schemes: security.signal?.schemes,
+            https_attempt: security.signal?.httpsAttempt,
+            used_http_fallback: security.signal?.usedHttpFallback,
+          },
         },
       )
     : [];
@@ -615,6 +628,14 @@ export async function applyHomeRubric(input: {
         {
           protocol: security.signal?.protocol,
           final_url: security.value,
+          reason_code: security.signal?.reasonCode,
+          schemes: security.signal?.schemes,
+          // An HTTPS→HTTP redirect is something the site configured against
+          // itself, not mere absence of a listener. Decision #12 gives
+          // active misconfigurations the top Fix First severity class.
+          active_misconfiguration:
+            securityCheck.outcome === "fail" &&
+            isHttpsDowngrade(security.signal?.reasonCode),
         },
         securityEvidence,
         securityConfidence,
