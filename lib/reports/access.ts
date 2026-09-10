@@ -49,13 +49,36 @@ export async function resolveReportAccess(
   return await resolveReportAccessByHash(tokenHash, store, now);
 }
 
-export async function resolveReportAccessByHash(
+/**
+ * Cookie-bound access. A signed cookie proves we issued the link, so a
+ * missing revision (12-month purge) is a fresh-scan case rather than the
+ * generic unavailable dead-end used for guessed tokens.
+ *
+ * Revoked / unpublished rows still exist and stay `unavailable`.
+ */
+export async function resolveCookieReportAccess(
   tokenHash: string,
   store: ReportAccessStore = createSupabaseReportAccessStore(),
   now: Date = new Date(),
 ): Promise<ReportAccess> {
+  return resolveReportAccessByHash(tokenHash, store, now, {
+    onMissing: "purged",
+  });
+}
+
+export async function resolveReportAccessByHash(
+  tokenHash: string,
+  store: ReportAccessStore = createSupabaseReportAccessStore(),
+  now: Date = new Date(),
+  options: { onMissing?: "unavailable" | "purged" } = {},
+): Promise<ReportAccess> {
   const row = await store.findByTokenHash(tokenHash);
-  if (!row) return { outcome: "unavailable" };
+  if (!row) {
+    if (options.onMissing === "purged") {
+      return { outcome: "expired", tokenHash, retained: false };
+    }
+    return { outcome: "unavailable" };
+  }
 
   // Revoked and never-published reports get the generic answer: those are
   // states the customer is not entitled to learn about.

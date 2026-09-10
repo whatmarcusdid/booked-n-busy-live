@@ -44,9 +44,16 @@ export async function resolveReRequest(
 ): Promise<ReRequestOutcome> {
   const emailHash = hashEmail(input.email);
 
-  const row = input.tokenHash
+  let row = input.tokenHash
     ? await store.findByReportTokenHash(input.tokenHash)
-    : await store.findLatestByEmailHash(emailHash);
+    : null;
+
+  // Token hash lives on report_revisions. After the 12-month purge the row
+  // is gone, so a still-held cookie cannot look the report up by hash. Fall
+  // back to the email so a purged-but-not-expired visitor still rescans.
+  if (!row) {
+    row = await store.findLatestByEmailHash(emailHash);
+  }
 
   if (!row) return { action: "none" };
 

@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { resolveReportAccessByHash } from "@/lib/reports/access";
+import { resolveCookieReportAccess } from "@/lib/reports/access";
 import {
   REPORT_ACCESS_COOKIE,
   readReportAccess,
@@ -35,7 +35,7 @@ export default async function ReportPage() {
 
   // Re-resolved on every view rather than trusted from the cookie, so a
   // report that expires or is revoked mid-session stops being readable.
-  const access = await resolveReportAccessByHash(claim.tokenHash);
+  const access = await resolveCookieReportAccess(claim.tokenHash);
 
   if (access.outcome === "expired") {
     return (
