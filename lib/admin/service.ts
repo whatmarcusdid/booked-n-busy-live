@@ -158,6 +158,8 @@ export function createSupabaseAdminStore(): AdminStore {
         events,
         transitions,
         costEntries,
+        bookingSessions,
+        meetings,
       ] = await Promise.all([
           supabase.from("audit_pages").select("*").eq("audit_id", id),
           supabase.from("evidence").select("*").eq("audit_id", id),
@@ -175,6 +177,20 @@ export function createSupabaseAdminStore(): AdminStore {
             .select("*")
             .eq("audit_id", id)
             .order("created_at", { ascending: true }),
+          supabase
+            .from("booking_sessions")
+            .select(
+              "id, customer_email, created_at, expires_at, consumed_at",
+            )
+            .eq("audit_id", id)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("meetings")
+            .select(
+              "id, booking_session_id, status, google_event_id, scheduled_start, scheduled_end, created_at",
+            )
+            .eq("audit_id", id)
+            .order("created_at", { ascending: false }),
         ]);
       return {
         audit,
@@ -195,6 +211,8 @@ export function createSupabaseAdminStore(): AdminStore {
         // Per-operation cost ledger, so a surprising total can be traced to
         // the operations that produced it.
         costEntries: costEntries.data ?? [],
+        bookingSessions: bookingSessions.data ?? [],
+        meetings: meetings.data ?? [],
       };
     },
     async currentRevisionNumber(auditId) {

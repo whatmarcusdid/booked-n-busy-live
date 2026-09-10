@@ -7,6 +7,7 @@ import {
   type BookingAuditRef,
   type BookingSessionStore,
 } from "@/lib/booking/session";
+import { BOOKING_SESSION_TTL_MS } from "@/lib/booking/eligibility";
 import { hmacSha256 } from "@/lib/crypto";
 
 const STATUS_TOKEN = "s".repeat(64);
@@ -18,8 +19,16 @@ const REF: BookingAuditRef = {
   customerEmailHash: "email-hash-1",
 };
 
-function memoryStore(overrides: Partial<BookingSessionStore> = {}) {
-  const rows: BookingAuditRef[] = [];
+type StoredSession = BookingAuditRef & {
+  expiresAt: string;
+  consumedAt: string | null;
+};
+
+function memoryStore(
+  existing: StoredSession[] = [],
+  overrides: Partial<BookingSessionStore> = {},
+) {
+  const rows: StoredSession[] = [...existing];
   const events: Array<{ auditId: string; eventType: string }> = [];
 
   const store: BookingSessionStore & {
@@ -35,23 +44,32 @@ function memoryStore(overrides: Partial<BookingSessionStore> = {}) {
       return tokenHash === REPORT_TOKEN_HASH ? REF : null;
     },
     async insert(ref) {
-      const existing = rows.find((row) => row.auditId === ref.auditId);
-      if (existing) {
+      const live = rows.find(
+        (row) =>
+          row.auditId === ref.auditId &&
+          !row.consumedAt &&
+          Date.parse(row.expiresAt) > Date.now(),
+      );
+      if (live) {
         return {
           session: {
             id: "session-1",
-            auditId: ref.auditId,
-            leadId: ref.leadId,
-            customerEmailHash: ref.customerEmailHash,
+            auditId: live.auditId,
+            leadId: live.leadId,
+            customerEmailHash: live.customerEmailHash,
             createdAt: "2026-09-08T00:00:00.000Z",
           },
           duplicate: true,
         };
       }
-      rows.push(ref);
+      rows.push({
+        ...ref,
+        expiresAt: new Date(Date.now() + BOOKING_SESSION_TTL_MS).toISOString(),
+        consumedAt: null,
+      });
       return {
         session: {
-          id: "session-1",
+          id: `session-${rows.length}`,
           auditId: ref.auditId,
           leadId: ref.leadId,
           customerEmailHash: ref.customerEmailHash,
@@ -126,6 +144,32 @@ describe("booking session creation", () => {
     expect(
       store.events.filter((e) => e.eventType === BOOKING_SESSION_CREATED_EVENT),
     ).toHaveLength(1);
+  });
+
+  it("opens a new session when the previous one is expired", async () => {
+    const store = memoryStore([
+      {
+        ...REF,
+        expiresAt: new Date(Date.now() - 1).toISOString(),
+        consumedAt: null,
+      },
+    ]);
+    const result = await createBookingSession({ statusToken: STATUS_TOKEN }, store);
+    expect(result.ok && result.duplicate).toBe(false);
+    expect(store.rows).toHaveLength(2);
+  });
+
+  it("opens a new session when the previous one is consumed", async () => {
+    const store = memoryStore([
+      {
+        ...REF,
+        expiresAt: new Date(Date.now() + BOOKING_SESSION_TTL_MS).toISOString(),
+        consumedAt: new Date().toISOString(),
+      },
+    ]);
+    const result = await createBookingSession({ statusToken: STATUS_TOKEN }, store);
+    expect(result.ok && result.duplicate).toBe(false);
+    expect(store.rows).toHaveLength(2);
   });
 
   it("captures the booking-session-creation event", async () => {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PUBLIC_TOKEN_HEADERS } from "@/lib/http/public-headers";
 import { clientKeyFromRequest, consumeRateLimit } from "@/lib/http/rate-limit";
 import { submitPreCallAnswers } from "@/lib/pre-call/answers";
+import { scheduleHandoffPath } from "@/lib/copy/pre-call";
 
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60_000;
@@ -54,7 +55,10 @@ export async function POST(request: NextRequest) {
       return json({ error: "Could not save answers." }, 500);
     }
 
-    return json({ id: result.id, scheduleUrl: "/schedule" }, 201);
+    return json(
+      { id: result.id, scheduleUrl: scheduleHandoffPath(parsed.data.statusToken) },
+      201,
+    );
   } catch (error) {
     console.error("Failed to save pre-call answers:", error);
     return json({ error: "Could not save answers." }, 500);

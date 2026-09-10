@@ -22,9 +22,17 @@ export const SELECT_PLACEHOLDER = "Select one";
 export const SUBMIT_ANSWERS_LABEL = "Submit Answers";
 export const SKIP_FOR_NOW_LABEL = "Skip For Now";
 export const CANCEL_LABEL = "Cancel";
+/** Fallback page when the booking session is missing, expired, or consumed. */
 export const SCHEDULE_PATH = "/schedule";
+/** Cookie-reachable handoff. Path=/report so bnb_report_access is sent. */
+export const REPORT_SCHEDULE_PATH = "/report/schedule";
 export const REPORT_PREPARE_PATH = "/report/prepare";
 export const REPORT_BOOKING_SESSIONS_PATH = "/report/booking-sessions";
+
+/** Live-session Prepare → Calendar handoff. Token stays off the Google URL. */
+export function scheduleHandoffPath(statusToken: string): string {
+  return `/schedule/${encodeURIComponent(statusToken)}`;
+}
 
 export const RESULT_OPTIONS = [
   "More phone calls",

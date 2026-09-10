@@ -148,11 +148,13 @@ describe("submitted pre-call answers persist", () => {
 });
 
 describe("Skip For Now writes no row", () => {
-  it("navigates to /schedule from Skip For Now and Cancel without posting answers", () => {
+  it("navigates to the Calendar handoff from Skip For Now and Cancel without posting answers", () => {
     const screen = readFileSync(SCREEN, "utf8");
     const form = readFileSync(FORM, "utf8");
 
-    expect(screen).toContain("href={SCHEDULE_PATH}");
+    expect(screen).toContain("href={scheduleTo}");
+    expect(screen).toContain("scheduleHandoffPath");
+    expect(screen).toContain("REPORT_SCHEDULE_PATH");
     expect(screen).toContain("SKIP_FOR_NOW_LABEL");
     expect(screen).toContain("CANCEL_LABEL");
     expect(screen).not.toContain("fetch(");

@@ -22,6 +22,7 @@ import {
 } from "@/lib/audit-workflow/fix-first";
 import { displayScore, scoreBand } from "@/lib/audit-workflow/rubric/bands";
 import { ReviewActions } from "./review-actions";
+import { BookingLinkage } from "./booking-linkage";
 import "../../admin.css";
 
 export const dynamic = "force-dynamic";
@@ -420,33 +421,41 @@ export default async function AdminAuditPage({
           publicationStatus={latest?.publication_status ?? null}
         />
 
-        {/* ---- meeting attendance (stubbed) ---- */}
-        <section className="admin-section" aria-label="Meeting attendance">
-          <h2>Meeting attendance</h2>
-          <p className="admin-note">
-            Stubbed, not wired. <code>POST /api/v1/admin/meetings/[id]/attendance</code>{" "}
-            does not exist, and neither does anything to address it: there is no
-            meetings table, and <code>booking_sessions</code> has no attendance
-            column — its migration defers the calendar columns to the Google
-            Calendar work. Building either is out of scope for this loop.
-          </p>
-          <div className="admin-actions">
-            <button
-              type="button"
-              className="admin-button admin-button-secondary"
-              disabled
-            >
-              Attended
-            </button>
-            <button
-              type="button"
-              className="admin-button admin-button-secondary"
-              disabled
-            >
-              No show
-            </button>
-          </div>
-        </section>
+        <BookingLinkage
+          auditId={id}
+          currentState={String(audit.current_state ?? "")}
+          sessions={asArray(detail.bookingSessions).map((row) => {
+            const session = asRecord(row);
+            return {
+              id: String(session.id ?? ""),
+              customerEmail:
+                session.customer_email == null
+                  ? null
+                  : String(session.customer_email),
+              createdAt: String(session.created_at ?? ""),
+              expiresAt: String(session.expires_at ?? ""),
+              consumedAt:
+                session.consumed_at == null
+                  ? null
+                  : String(session.consumed_at),
+            };
+          })}
+          meetings={asArray(detail.meetings).map((row) => {
+            const meeting = asRecord(row);
+            return {
+              id: String(meeting.id ?? ""),
+              bookingSessionId: String(meeting.booking_session_id ?? ""),
+              status: String(meeting.status ?? ""),
+              googleEventId:
+                meeting.google_event_id == null
+                  ? null
+                  : String(meeting.google_event_id),
+              scheduledStart: String(meeting.scheduled_start ?? ""),
+              scheduledEnd: String(meeting.scheduled_end ?? ""),
+              createdAt: String(meeting.created_at ?? ""),
+            };
+          })}
+        />
 
         {/* ---- human decision history ---- */}
         <section className="admin-section" aria-label="Decision history">

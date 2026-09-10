@@ -1,16 +1,18 @@
-export default function SchedulePage() {
+import { BOOKING_UNAVAILABLE_MESSAGE } from "@/lib/booking/calendar-handoff";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * Customer-facing fallback when a findings-call booking session is
+ * missing, expired, or already consumed. Successful handoff never lands
+ * here — those requests 302 to Google Calendar.
+ */
+export default function ScheduleUnavailablePage() {
   return (
     <main>
       <section className="card">
-        {/* TODO(figma): scheduling provider embed and calendar chrome */}
-        <h1>Schedule</h1>
-        <p>
-          Scheduling is not wired to a provider yet. This page is the route
-          placeholder for tomorrow&apos;s visual pass.
-        </p>
-        <p>
-          <a href="/confirmation">Continue to confirmation</a>
-        </p>
+        <h1>Booking unavailable</h1>
+        <p>{BOOKING_UNAVAILABLE_MESSAGE}</p>
       </section>
     </main>
   );

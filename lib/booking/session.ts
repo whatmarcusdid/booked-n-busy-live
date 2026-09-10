@@ -1,6 +1,7 @@
 import { createAdminClient } from "../supabase/admin";
-import { hmacSha256 } from "../crypto";
+import { hmacSha256, normalizeEmail } from "../crypto";
 import { hashReportToken } from "../reports/tokens";
+import { bookingSessionExpiresAt, isLiveBookingSession } from "./eligibility";
 
 /**
  * Findings-call booking sessions.
@@ -28,6 +29,8 @@ export interface BookingAuditRef {
   auditId: string;
   leadId: string;
   customerEmailHash: string;
+  /** Normalized plaintext when the lead has it. Null on hash-only legacy rows. */
+  customerEmail?: string | null;
 }
 
 export interface BookingSessionStore {
@@ -78,12 +81,14 @@ export function createSupabaseBookingSessionStore(): BookingSessionStore {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from("audits")
-      .select("id, lead_id, leads!inner ( email_hash )")
+      .select("id, lead_id, leads!inner ( email_hash, email )")
       .eq("id", auditId)
       .maybeSingle<{
         id: string;
         lead_id: string;
-        leads: { email_hash: string } | { email_hash: string }[];
+        leads:
+          | { email_hash: string; email: string | null }
+          | { email_hash: string; email: string | null }[];
       }>();
     if (!data) return null;
     const lead = Array.isArray(data.leads) ? data.leads[0] : data.leads;
@@ -92,6 +97,7 @@ export function createSupabaseBookingSessionStore(): BookingSessionStore {
       auditId: data.id,
       leadId: data.lead_id,
       customerEmailHash: lead.email_hash,
+      customerEmail: lead.email ? normalizeEmail(lead.email) : null,
     };
   }
 
@@ -124,20 +130,23 @@ export function createSupabaseBookingSessionStore(): BookingSessionStore {
           audit_id: ref.auditId,
           lead_id: ref.leadId,
           customer_email_hash: ref.customerEmailHash,
+          customer_email: ref.customerEmail
+            ? normalizeEmail(ref.customerEmail)
+            : null,
+          expires_at: bookingSessionExpiresAt().toISOString(),
         })
         .select("id, audit_id, lead_id, customer_email_hash, created_at")
         .maybeSingle();
 
-      // Unique violation on audit_id: the CTA was already used for this
-      // audit, so return the existing session rather than a second one.
-      if (error?.code === "23505" || !data) {
-        const { data: existing } = await supabase
-          .from("booking_sessions")
-          .select("id, audit_id, lead_id, customer_email_hash, created_at")
-          .eq("audit_id", ref.auditId)
-          .maybeSingle();
+      // Live-session exclusion (or a leftover unique violation): reuse the
+      // current unexpired, unconsumed session instead of opening a second one.
+      if (isLiveSessionConflict(error?.code)) {
+        const existing = await findLiveSessionRow(supabase, ref.auditId);
         if (!existing) throw new Error("Failed to create booking session");
         return { session: toRecord(existing), duplicate: true };
+      }
+      if (error || !data) {
+        throw new Error("Failed to create booking session");
       }
 
       return { session: toRecord(data), duplicate: false };
@@ -166,6 +175,35 @@ function toRecord(row: {
     customerEmailHash: row.customer_email_hash,
     createdAt: row.created_at,
   };
+}
+
+const LIVE_SESSION_COLUMNS =
+  "id, audit_id, lead_id, customer_email_hash, created_at, expires_at, consumed_at";
+
+function isLiveSessionConflict(code: string | undefined): boolean {
+  return code === "23505" || code === "23P01";
+}
+
+async function findLiveSessionRow(
+  supabase: ReturnType<typeof createAdminClient>,
+  auditId: string,
+  now: Date = new Date(),
+) {
+  const { data } = await supabase
+    .from("booking_sessions")
+    .select(LIVE_SESSION_COLUMNS)
+    .eq("audit_id", auditId)
+    .is("consumed_at", null)
+    .gt("expires_at", now.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const session = {
+    consumedAt: data.consumed_at as string | null,
+    expiresAt: data.expires_at as string,
+  };
+  return isLiveBookingSession(session, now) ? data : null;
 }
 
 export { hashReportToken };

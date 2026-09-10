@@ -4,7 +4,8 @@ import {
   CANCEL_LABEL,
   PRE_CALL_HEADLINE,
   PRE_CALL_SUBHEADING,
-  SCHEDULE_PATH,
+  REPORT_SCHEDULE_PATH,
+  scheduleHandoffPath,
   SKIP_FOR_NOW_LABEL,
 } from "@/lib/copy/pre-call";
 import { PrepareForm } from "./prepare-form";
@@ -28,23 +29,29 @@ export function PrepareScreen({
   findingOptions,
   homeHref,
   submitUrl,
+  scheduleHref,
 }: {
   token?: string;
   websiteHost: string;
   findingOptions: readonly string[];
   homeHref?: string;
   submitUrl?: string;
+  scheduleHref?: string;
 }) {
+  const scheduleTo =
+    scheduleHref ??
+    (token ? scheduleHandoffPath(token) : REPORT_SCHEDULE_PATH);
+
   return (
     <main className="pre-call">
       <nav className="pre-call-nav" aria-label="Primary">
         <Logo
           href={homeHref ?? (token ? `/audit/results/${token}` : "/")}
         />
-        <Link className="pre-call-nav-btn pre-call-skip" href={SCHEDULE_PATH}>
+        <Link className="pre-call-nav-btn pre-call-skip" href={scheduleTo}>
           {SKIP_FOR_NOW_LABEL}
         </Link>
-        <Link className="pre-call-nav-btn pre-call-cancel" href={SCHEDULE_PATH}>
+        <Link className="pre-call-nav-btn pre-call-cancel" href={scheduleTo}>
           {CANCEL_LABEL}
         </Link>
       </nav>

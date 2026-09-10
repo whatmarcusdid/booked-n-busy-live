@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
  * Optional three-question form before the findings-call scheduler.
  *
  * Authorized by the same public status token as the live results screen.
- * Submitting writes `pre_call_answers` and continues to `/schedule`.
- * Skipping writes nothing and goes to `/schedule` directly.
+ * Submitting writes `pre_call_answers` and continues to the Calendar
+ * handoff. Skipping writes nothing and goes to the same handoff.
  */
 export default async function PreparePage({
   params,

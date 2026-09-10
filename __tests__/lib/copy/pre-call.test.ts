@@ -7,7 +7,9 @@ import {
   PRE_CALL_HEADLINE,
   PRE_CALL_SUBHEADING,
   RESULT_OPTIONS,
+  REPORT_SCHEDULE_PATH,
   SCHEDULE_PATH,
+  scheduleHandoffPath,
   SKIP_FOR_NOW_LABEL,
   SUBMIT_ANSWERS_LABEL,
   TIMING_OPTIONS,
@@ -109,12 +111,16 @@ describe("prepare-screen copy and layout", () => {
     expect(form).toContain("timingAnswer || null");
   });
 
-  it("shows Skip For Now on mobile and Cancel on desktop, both to /schedule", () => {
+  it("shows Skip For Now on mobile and Cancel on desktop, both to the Calendar handoff", () => {
     const screen = readFileSync(SCREEN, "utf8");
     const css = readFileSync(CSS, "utf8");
     expect(screen).toContain("SKIP_FOR_NOW_LABEL");
     expect(screen).toContain("CANCEL_LABEL");
-    expect(screen).toContain("href={SCHEDULE_PATH}");
+    expect(screen).toContain("href={scheduleTo}");
+    expect(screen).toContain("scheduleHandoffPath(token)");
+    expect(screen).toContain("REPORT_SCHEDULE_PATH");
+    expect(scheduleHandoffPath("status-token")).toBe("/schedule/status-token");
+    expect(REPORT_SCHEDULE_PATH).toBe("/report/schedule");
     expect(SCHEDULE_PATH).toBe("/schedule");
     expect(css).toContain(".pre-call-cancel");
     expect(css).toContain("display: none");
