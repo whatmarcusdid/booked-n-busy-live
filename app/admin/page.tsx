@@ -48,6 +48,9 @@ export default async function AdminPage({
         <header className="admin-topbar">
           <h1>Review queue</h1>
           <div className="admin-topbar-meta">
+            <Link className="admin-link" href="/admin/dashboard">
+              Observability
+            </Link>
             <span>{session.email}</span>
             <form action="/api/v1/admin/auth/signout" method="POST">
               <button

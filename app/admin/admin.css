@@ -378,3 +378,13 @@
   border: 1px dashed var(--ac-border);
   border-radius: var(--ac-radius);
 }
+
+.admin-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-range .admin-button {
+  text-decoration: none;
+}
