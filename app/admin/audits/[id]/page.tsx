@@ -23,6 +23,7 @@ import {
 import { displayScore, scoreBand } from "@/lib/audit-workflow/rubric/bands";
 import { ReviewActions } from "./review-actions";
 import { BookingLinkage } from "./booking-linkage";
+import { formatOptionalLeadField } from "@/lib/leads/display";
 import "../../admin.css";
 
 export const dynamic = "force-dynamic";
@@ -224,6 +225,34 @@ export default async function AdminAuditPage({
                 </div>
               </div>
             ) : null}
+            <div>
+              <div className="admin-kv-label">Primary trade</div>
+              <div>
+                {String(
+                  lead?.primary_trade_display ?? "Not provided",
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="admin-kv-label">Secondary trades</div>
+              <div>
+                {String(
+                  lead?.secondary_trades_display ?? "Not provided",
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="admin-kv-label">Business model</div>
+              <div>
+                {String(
+                  lead?.business_model_display ?? "Not provided",
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="admin-kv-label">Audit focus</div>
+              <div>{formatOptionalLeadField(String(audit.audit_focus ?? ""))}</div>
+            </div>
           </div>
           {latest?.executive_summary ? (
             <p className="admin-snippet">{latest.executive_summary}</p>

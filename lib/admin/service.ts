@@ -2,7 +2,7 @@ import { createAdminClient } from "../supabase/admin";
 import { publishReportRevision } from "../reports/publication";
 import type { AssembledReport } from "../reports/schema";
 import { validateReportForPublication } from "../reports/publication";
-import { formatOptionalLeadField } from "../leads/display";
+import { formatOptionalLeadField, formatOptionalLeadList } from "../leads/display";
 import { BRAND_NAME } from "../identity";
 import {
   adminAllowList,
@@ -146,7 +146,9 @@ export function createSupabaseAdminStore(): AdminStore {
       if (!audit) return null;
       const { data: lead } = await supabase
         .from("leads")
-        .select("id, first_name, business_name, phone, trade, service_area")
+        .select(
+          "id, first_name, business_name, phone, trade, service_area, primary_trade, secondary_trades, business_model",
+        )
         .eq("id", audit.lead_id)
         .maybeSingle();
       const [
@@ -199,6 +201,13 @@ export function createSupabaseAdminStore(): AdminStore {
               ...lead,
               trade_display: formatOptionalLeadField(lead.trade),
               service_area_display: formatOptionalLeadField(lead.service_area),
+              primary_trade_display: formatOptionalLeadField(lead.primary_trade),
+              secondary_trades_display: formatOptionalLeadList(
+                lead.secondary_trades,
+              ),
+              business_model_display: formatOptionalLeadField(
+                lead.business_model,
+              ),
             }
           : null,
         pages: pages.data ?? [],
