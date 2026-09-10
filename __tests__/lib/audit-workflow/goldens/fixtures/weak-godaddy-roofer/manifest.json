@@ -1,0 +1,56 @@
+{
+  "fixtureVersion": 1,
+  "rubricVersion": "v2",
+  "scoringBandVersion": "sb-v1",
+  "expectedCompositeScore": 0.22,
+  "expectedScoreBand": "critical_gaps",
+  "recommendationChangeNote": "Primary changed from license_insurance to phone_cta_visibility. This is the headline effect of removing pillar-order ranking: the old order surfaced Trust Signals first because it is the first pillar, while the locked severity classes rank direct contact path (class 2) above trust establishment (class 3). Nine checks fail here; the two surfaced are the class-2 pair in stable catalog order.",
+  "expectedAuditOutcome": "complete",
+  "expectedCriterionOutcomes": {
+    "license_insurance": "fail",
+    "service_area_clarity": "fail",
+    "reviews_above_fold": "pass",
+    "key_person_credibility": "pass",
+    "phone_cta_visibility": "fail",
+    "quote_booking_cta_visibility": "fail",
+    "website_performance": "fail",
+    "process_clarity": "fail",
+    "seo_ai_search_readiness": "fail",
+    "security_health": "pass",
+    "faq_common_concerns": "fail",
+    "offer_differentiation": "fail"
+  },
+  "expectedPillarScores": {
+    "trust_signals": 0.4,
+    "lead_conversion": 0,
+    "growth_infrastructure": 0.25
+  },
+  "expectedAssessmentCoverage": {
+    "trust_signals": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "lead_conversion": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "growth_infrastructure": {
+      "assessed": 4,
+      "not_assessed": 0
+    }
+  },
+  "expectedRecommendations": [
+    {
+      "criterion_key": "phone_cta_visibility",
+      "priority": "fix_first"
+    },
+    {
+      "criterion_key": "quote_booking_cta_visibility",
+      "priority": "fix_next"
+    }
+  ],
+  "humanReviewRequired": false,
+  "publicationValidation": {
+    "eligible": true
+  }
+}

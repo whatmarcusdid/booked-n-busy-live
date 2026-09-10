@@ -1,0 +1,56 @@
+{
+  "fixtureVersion": 1,
+  "rubricVersion": "v2",
+  "scoringBandVersion": "sb-v1",
+  "expectedCompositeScore": 0.76,
+  "expectedScoreBand": "needs_improvement",
+  "recommendationChangeNote": "Dropped website_performance (was improve_later). Its outcome is `partial`, and Fix First eligibility is now `fail` only. process_clarity and faq_common_concerns both sit in class 4, so the second slot is still filled.",
+  "expectedAuditOutcome": "complete",
+  "expectedCriterionOutcomes": {
+    "license_insurance": "pass",
+    "service_area_clarity": "pass",
+    "reviews_above_fold": "pass",
+    "key_person_credibility": "pass",
+    "phone_cta_visibility": "pass",
+    "quote_booking_cta_visibility": "pass",
+    "website_performance": "partial",
+    "process_clarity": "fail",
+    "seo_ai_search_readiness": "pass",
+    "security_health": "pass",
+    "faq_common_concerns": "fail",
+    "offer_differentiation": "pass"
+  },
+  "expectedPillarScores": {
+    "trust_signals": 0.91,
+    "lead_conversion": 0.63,
+    "growth_infrastructure": 0.75
+  },
+  "expectedAssessmentCoverage": {
+    "trust_signals": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "lead_conversion": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "growth_infrastructure": {
+      "assessed": 4,
+      "not_assessed": 0
+    }
+  },
+  "expectedRecommendations": [
+    {
+      "criterion_key": "process_clarity",
+      "priority": "fix_first"
+    },
+    {
+      "criterion_key": "faq_common_concerns",
+      "priority": "fix_next"
+    }
+  ],
+  "humanReviewRequired": false,
+  "publicationValidation": {
+    "eligible": true
+  }
+}

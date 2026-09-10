@@ -1,0 +1,56 @@
+{
+  "fixtureVersion": 1,
+  "rubricVersion": "v2",
+  "scoringBandVersion": "sb-v1",
+  "expectedCompositeScore": 0.72,
+  "expectedScoreBand": "needs_improvement",
+  "recommendationChangeNote": "Dropped offer_differentiation (was improve_later). It is an eligible fail but sits in severity class 4 (growth/discovery) while the top eligible tier here is class 3 (trust establishment); a second recommendation may only come from the primary's own class, and there is no third slot under the locked rules.",
+  "expectedAuditOutcome": "complete",
+  "expectedCriterionOutcomes": {
+    "license_insurance": "fail",
+    "service_area_clarity": "fail",
+    "reviews_above_fold": "pass",
+    "key_person_credibility": "pass",
+    "phone_cta_visibility": "pass",
+    "quote_booking_cta_visibility": "pass",
+    "website_performance": "pass",
+    "process_clarity": "pass",
+    "seo_ai_search_readiness": "pass",
+    "security_health": "pass",
+    "faq_common_concerns": "pass",
+    "offer_differentiation": "fail"
+  },
+  "expectedPillarScores": {
+    "trust_signals": 0.41,
+    "lead_conversion": 1,
+    "growth_infrastructure": 0.75
+  },
+  "expectedAssessmentCoverage": {
+    "trust_signals": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "lead_conversion": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "growth_infrastructure": {
+      "assessed": 4,
+      "not_assessed": 0
+    }
+  },
+  "expectedRecommendations": [
+    {
+      "criterion_key": "license_insurance",
+      "priority": "fix_first"
+    },
+    {
+      "criterion_key": "service_area_clarity",
+      "priority": "fix_next"
+    }
+  ],
+  "humanReviewRequired": false,
+  "publicationValidation": {
+    "eligible": true
+  }
+}

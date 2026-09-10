@@ -1,0 +1,55 @@
+{
+  "fixtureVersion": 1,
+  "rubricVersion": "v2",
+  "scoringBandVersion": "sb-v1",
+  "expectedCompositeScore": 0.77,
+  "expectedScoreBand": "needs_improvement",
+  "expectedAuditOutcome": "complete",
+  "expectedCriterionOutcomes": {
+    "license_insurance": "pass",
+    "service_area_clarity": "pass",
+    "reviews_above_fold": "pass",
+    "key_person_credibility": "pass",
+    "phone_cta_visibility": "pass",
+    "quote_booking_cta_visibility": "pass",
+    "website_performance": "not_assessed",
+    "process_clarity": "fail",
+    "seo_ai_search_readiness": "pass",
+    "security_health": "pass",
+    "faq_common_concerns": "fail",
+    "offer_differentiation": "pass"
+  },
+  "expectedPillarScores": {
+    "trust_signals": 0.89,
+    "lead_conversion": 0.67,
+    "growth_infrastructure": 0.75
+  },
+  "expectedAssessmentCoverage": {
+    "trust_signals": {
+      "assessed": 4,
+      "not_assessed": 0
+    },
+    "lead_conversion": {
+      "assessed": 3,
+      "not_assessed": 1
+    },
+    "growth_infrastructure": {
+      "assessed": 4,
+      "not_assessed": 0
+    }
+  },
+  "expectedRecommendations": [
+    {
+      "criterion_key": "process_clarity",
+      "priority": "fix_first"
+    },
+    {
+      "criterion_key": "faq_common_concerns",
+      "priority": "fix_next"
+    }
+  ],
+  "humanReviewRequired": false,
+  "publicationValidation": {
+    "eligible": true
+  }
+}

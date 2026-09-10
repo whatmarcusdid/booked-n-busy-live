@@ -1,30 +1,63 @@
-import { getSupabaseStatus } from "@/lib/supabase/status";
+import { IntakeForm } from "./intake-form";
+import { LandingStars } from "./landing-stars";
+import "./landing.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
-  const status = await getSupabaseStatus();
-
+export default function HomePage() {
   return (
-    <main>
-      <section className="card">
-        <p className="eyebrow">Booked N Busy Live</p>
-        <h1>Your booking site is live.</h1>
-        <p>
-          This Next.js app is deployed on Vercel. Next up: scheduling,
-          availability, and checkout.
-        </p>
-        <p
-          className={`status ${
-            status.configured && status.reachable ? "status-ok" : "status-wait"
-          }`}
-        >
-          {status.configured
-            ? status.reachable
-              ? `Supabase connected (${status.projectHost})`
-              : `Supabase keys are set, but ${status.projectHost} did not respond`
-            : "Supabase is not connected yet. Add project URL and anon key."}
-        </p>
+    <main className="landing">
+      <LandingStars />
+      <nav className="landing-nav" aria-label="Primary">
+        <a className="landing-logo" href="/">
+          <span className="landing-logo-mark">
+            <img
+              src="/landing/logo-mark.svg"
+              alt=""
+              width={51}
+              height={51}
+            />
+          </span>
+          <span className="landing-wordmark">
+            <img
+              src="/landing/wordmark.svg"
+              alt="Booked N Busy"
+              width={94}
+              height={51}
+            />
+          </span>
+        </a>
+        <button className="landing-menu" type="button" aria-label="Open menu">
+          <span className="landing-menu-icon">
+            <img src="/landing/menu.svg" alt="" width={40} height={40} />
+          </span>
+        </button>
+      </nav>
+      <section className="landing-hero">
+        <div className="landing-copy">
+          <p className="landing-eyebrow">Free Website Performance Audit</p>
+          <h1 className="landing-title">
+            Is your website helping or hurting your business?
+          </h1>
+          <p className="landing-subhead">
+            Get your speed, security, and SEO grade in under 2 minutes
+          </p>
+          <div className="landing-testimonial">
+            <span className="landing-avatar">
+              <img
+                src="/landing/marcus-white.jpg"
+                alt=""
+                width={56}
+                height={56}
+              />
+            </span>
+            <div className="landing-testimonial-copy">
+              <p className="landing-testimonial-name">Marcus White</p>
+              <p className="landing-testimonial-role">Founder &amp; CPO</p>
+            </div>
+          </div>
+        </div>
+        <IntakeForm />
       </section>
     </main>
   );

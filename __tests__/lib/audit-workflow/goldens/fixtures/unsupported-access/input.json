@@ -1,0 +1,5 @@
+{
+  "auditId": "golden-unsupported-access",
+  "websiteUrl": "https://blocked-host.example.test",
+  "kind": "unsupported_access"
+}

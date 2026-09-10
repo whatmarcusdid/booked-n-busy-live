@@ -1,0 +1,30 @@
+<!--
+  Synthetic fixture only. Hand-built Squarespace-style landscaper homepage.
+  Visual credibility is server-rendered; contact/process live behind JS hydration
+  so phone, quote, and process checks should miss them (known JS-content gap).
+  Not copied from any real website.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Grove Landscape | Portland Garden Design</title>
+  <meta name="description" content="Garden design and yard care for Portland homes, with seasonal packages and a licensed crew.">
+</head>
+<body>
+  <header>
+    <p>Grove Landscape — licensed and insured. Serving Portland, OR.</p>
+  </header>
+  <main>
+    <h1>Outdoor rooms, planted with care</h1>
+    <img alt="Front-yard planting bed after a spring refresh" src="/images/yard.png">
+    <img alt="Stone path through a pollinator garden" src="/images/path.png">
+    <p>Seasonal packages for spring cleanup and fall mulch.</p>
+    <div id="sqs-contact-root"></div>
+    <script>
+      // Contact widget hydrates client-side. No tel: link and no quote CTA
+      // exist in the server HTML on purpose.
+      window.__GROVE_CONTACT__ = { widget: "squarespace-form" };
+    </script>
+  </main>
+</body>
+</html>

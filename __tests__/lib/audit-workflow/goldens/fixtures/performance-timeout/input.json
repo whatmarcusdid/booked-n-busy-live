@@ -1,0 +1,5 @@
+{
+  "auditId": "golden-performance-timeout",
+  "websiteUrl": "https://slow-hvac.example.test",
+  "kind": "performance_timeout"
+}

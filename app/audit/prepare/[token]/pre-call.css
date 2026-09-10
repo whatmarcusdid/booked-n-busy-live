@@ -1,0 +1,303 @@
+/*
+ * Prepare for your findings call — Figma frames 10:3918 (mobile) and
+ * 31:9752 (desktop). One responsive form. Mobile/tablet nav is "Skip For
+ * Now"; desktop is "Cancel". Both go to /schedule without writing a row.
+ *
+ * Breakpoints match Landing, Loading, and Results: mobile 0–767 |
+ * tablet 768–1023 | desktop 1024+.
+ */
+
+.pre-call {
+  --pc-text-default: #0c0a28;
+  --pc-text-subtle: #737373;
+  --pc-text-field: #171717;
+  --pc-border-strong: #d4d4d4;
+  --pc-action-primary: #2920a5;
+  --pc-brand-600: #2920a5;
+  --pc-surface: #ffffff;
+  --pc-radius: 8px;
+  --pc-h1: 30px;
+
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 44px;
+  margin: 0;
+  padding: 32px 24px;
+  color: var(--pc-text-default);
+  background: var(--pc-surface);
+}
+
+main.pre-call {
+  display: flex;
+  place-items: unset;
+  padding: 32px 24px;
+}
+
+.pre-call p,
+.pre-call h1 {
+  margin: 0;
+  color: inherit;
+}
+
+.pre-call-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 51px;
+  flex-shrink: 0;
+}
+
+.pre-call-logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.pre-call-logo-mark,
+.pre-call-wordmark {
+  display: block;
+  overflow: hidden;
+}
+
+.pre-call-logo-mark {
+  width: 51px;
+  height: 51px;
+}
+
+.pre-call-wordmark {
+  width: 94px;
+  height: 51px;
+}
+
+.pre-call-logo-mark img,
+.pre-call-wordmark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.pre-call-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 100px;
+  height: 44px;
+  padding: 10px 24px;
+  border: 3px solid var(--pc-action-primary);
+  border-radius: var(--pc-radius);
+  background: transparent;
+  color: var(--pc-action-primary);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pre-call-cancel {
+  display: none;
+}
+
+.pre-call-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 48px;
+  width: 100%;
+  min-width: 0;
+}
+
+.pre-call-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.pre-call-host {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--pc-brand-600);
+  overflow-wrap: anywhere;
+}
+
+.pre-call-headline {
+  width: 100%;
+  font-family: var(--font-ratch), sans-serif;
+  font-size: var(--pc-h1);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--pc-text-default);
+  overflow-wrap: break-word;
+}
+
+.pre-call-subhead {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--pc-text-subtle);
+}
+
+.pre-call-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 32px;
+  width: 100%;
+}
+
+.pre-call-field {
+  position: relative;
+  width: 100%;
+  height: 44px;
+}
+
+.pre-call-field-label {
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  top: -8px;
+  padding: 0 4px;
+  background: var(--pc-surface);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--pc-text-field);
+  white-space: nowrap;
+}
+
+.pre-call-field select {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 4px 48px 4px 16px;
+  border: 1px solid var(--pc-border-strong);
+  border-radius: var(--pc-radius);
+  background: var(--pc-surface);
+  color: var(--pc-text-field);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.pre-call-field select::-ms-expand {
+  display: none;
+}
+
+.pre-call-field select[data-empty="true"] {
+  color: var(--pc-text-subtle);
+}
+
+.pre-call-field select:focus {
+  outline: 2px solid var(--pc-action-primary);
+  outline-offset: 1px;
+}
+
+.pre-call-field-chevron {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.pre-call-field-chevron img {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.pre-call-submit {
+  width: 100%;
+  height: 44px;
+  --md-sys-color-primary: var(--pc-action-primary);
+  --md-sys-color-on-primary: #ffffff;
+  --md-filled-button-container-shape: 8px;
+  --md-filled-button-label-text-size: 16px;
+  --md-filled-button-label-text-weight: 600;
+}
+
+.pre-call [role="alert"] {
+  margin: 0;
+  font-size: 16px;
+  color: #b42318;
+}
+
+@media (max-width: 767px) {
+  .pre-call-nav-btn {
+    padding: 10px 16px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .pre-call {
+    --pc-h1: 32px;
+    align-items: center;
+  }
+
+  .pre-call-content {
+    max-width: 500px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pre-call {
+    --pc-h1: 36px;
+    align-items: center;
+  }
+
+  .pre-call-nav,
+  .pre-call-content {
+    max-width: 800px;
+  }
+
+  .pre-call-content {
+    align-items: center;
+  }
+
+  .pre-call-skip {
+    display: none;
+  }
+
+  .pre-call-cancel {
+    display: flex;
+  }
+
+  .pre-call-form {
+    max-width: 548px;
+  }
+
+  .pre-call-submit {
+    width: auto;
+    min-width: 100px;
+    align-self: flex-start;
+    padding-inline: 16px;
+  }
+}

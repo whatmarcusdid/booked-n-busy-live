@@ -1,0 +1,380 @@
+/*
+ * Admin review console. Intentionally undesigned per the locked Admin UI
+ * scope decision: operations-first, no original visual design work. Every
+ * colour here resolves to an existing Material 3 token from
+ * lib/material/tokens.css, and the typeface is the app's Ratch, so the
+ * console reads as part of the product without inventing a new language.
+ *
+ * Scoped to `.admin-console` because globals.css centres `main` in a grid
+ * for the single-card customer screens; a queue needs the full width.
+ */
+.admin-console {
+  --ac-gap: 24px;
+  --ac-radius: 8px;
+  --ac-border: var(--md-sys-color-outline);
+  --ac-muted: var(--md-sys-color-on-surface-variant);
+
+  display: block;
+  place-items: initial;
+  min-height: 100vh;
+  margin: 0;
+  padding: 24px;
+  font-family: var(--font-ratch), Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface);
+}
+
+.admin-console h1,
+.admin-console h2,
+.admin-console h3 {
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.admin-console h1 {
+  font-size: 1.5rem;
+}
+
+.admin-console h2 {
+  font-size: 1.125rem;
+}
+
+.admin-console h3 {
+  font-size: 0.95rem;
+}
+
+.admin-console p {
+  margin: 0;
+  color: var(--ac-muted);
+}
+
+.admin-shell {
+  width: min(72rem, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-gap);
+}
+
+/* ---- top bar ---- */
+
+.admin-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.admin-topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--ac-muted);
+}
+
+/* ---- queue health ---- */
+
+.admin-health {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 12px;
+}
+
+.admin-stat {
+  padding: 16px;
+  border: 1px solid var(--ac-border);
+  border-radius: var(--ac-radius);
+  background: var(--md-sys-color-surface-container-lowest);
+}
+
+.admin-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ac-muted);
+}
+
+.admin-stat-value {
+  margin-top: 6px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.admin-stat-note {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--ac-muted);
+}
+
+.admin-stat-flagged .admin-stat-value {
+  color: var(--md-sys-color-error);
+}
+
+/* ---- queue list ---- */
+
+.admin-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.admin-queue-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--ac-border);
+  border-radius: var(--ac-radius);
+  background: var(--md-sys-color-surface-container-lowest);
+  text-decoration: none;
+  color: inherit;
+}
+
+.admin-queue-row:hover {
+  border-color: var(--md-sys-color-primary);
+}
+
+/* A flagged row is legible without relying on colour alone: it also carries
+   the "Priority" badge and its reasons in text. */
+.admin-queue-row-priority {
+  border-left: 4px solid var(--md-sys-color-error);
+}
+
+.admin-queue-main {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.admin-queue-name {
+  font-weight: 600;
+}
+
+.admin-queue-sub {
+  font-size: 0.8rem;
+  color: var(--ac-muted);
+  overflow-wrap: anywhere;
+}
+
+.admin-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.admin-badge-priority {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.admin-badge-ok {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+/* ---- sections / tables ---- */
+
+.admin-section {
+  padding: 20px;
+  border: 1px solid var(--ac-border);
+  border-radius: var(--ac-radius);
+  background: var(--md-sys-color-surface-container-lowest);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  vertical-align: top;
+}
+
+.admin-table th {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ac-muted);
+}
+
+.admin-table code {
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-kv {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.admin-kv-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ac-muted);
+}
+
+/* ---- evidence viewer ---- */
+
+.admin-shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 12px;
+}
+
+.admin-shot {
+  border: 1px solid var(--ac-border);
+  border-radius: var(--ac-radius);
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container);
+}
+
+.admin-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.admin-shot-caption {
+  padding: 8px 10px;
+  font-size: 0.75rem;
+  color: var(--ac-muted);
+  overflow-wrap: anywhere;
+}
+
+.admin-snippet {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--md-sys-color-surface-container-high);
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- actions ---- */
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-button {
+  padding: 10px 16px;
+  border: 1px solid var(--md-sys-color-primary);
+  border-radius: var(--ac-radius);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.admin-button-secondary {
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  border-color: var(--ac-border);
+}
+
+.admin-button-danger {
+  background: transparent;
+  color: var(--md-sys-color-error);
+  border-color: var(--md-sys-color-error);
+}
+
+.admin-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ac-muted);
+}
+
+.admin-field textarea {
+  width: 100%;
+  min-height: 5rem;
+  padding: 10px;
+  border: 1px solid var(--ac-border);
+  border-radius: var(--ac-radius);
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  background: var(--md-sys-color-surface);
+  resize: vertical;
+}
+
+.admin-field textarea:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
+}
+
+.admin-note {
+  padding: 10px 12px;
+  border-radius: var(--ac-radius);
+  font-size: 0.8rem;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.admin-note-error {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.admin-note-ok {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.admin-link {
+  color: var(--md-sys-color-on-surface);
+  font-size: 0.85rem;
+}
+
+.admin-empty {
+  padding: 32px;
+  text-align: center;
+  border: 1px dashed var(--ac-border);
+  border-radius: var(--ac-radius);
+}
