@@ -2,7 +2,7 @@ import {
   fetchBrowserlessPerformance,
   type FetchPagePerformance,
 } from "../browserless";
-import { assessUrlSafety, type UrlSafetyDeps } from "../url-safety";
+import { assessUrlSafety, resolveUrlSafely, type UrlSafetyDeps } from "../url-safety";
 import type { AuditWorkflowStore } from "./store";
 import type { PerformanceSignal } from "./rubric/website-performance";
 
@@ -29,9 +29,13 @@ export async function captureHomePerformance(input: {
   }
   const targetUrl = page?.url ?? input.websiteUrl;
 
-  const safety = await assessUrlSafety(targetUrl, input.safetyDeps);
+  const safety = await resolveUrlSafely(targetUrl, input.safetyDeps);
   if (!safety.ok) {
-    await record(input, page?.id ?? null, unavailable(safety.reasonCode));
+    await record(input, page?.id ?? null, {
+      ...unavailable(safety.reasonCode),
+      rejected_hop: safety.rejectedHop,
+      rejected_url: safety.rejectedUrl,
+    });
     return;
   }
 
@@ -39,7 +43,7 @@ export async function captureHomePerformance(input: {
   let result;
   try {
     result = await fetchPerformance({
-      url: safety.normalizedUrl,
+      url: safety.finalUrl,
       timeoutMs: safety.bounds.maxPerformanceFetchMs,
       maxResponseBytes: safety.bounds.maxResponseBytes,
     });
@@ -53,7 +57,7 @@ export async function captureHomePerformance(input: {
     return;
   }
 
-  if (result.metrics.finalUrl && result.metrics.finalUrl !== safety.normalizedUrl) {
+  if (result.metrics.finalUrl && result.metrics.finalUrl !== safety.finalUrl) {
     const dest = await assessUrlSafety(result.metrics.finalUrl, input.safetyDeps);
     if (!dest.ok) {
       await record(input, page?.id ?? null, unavailable(dest.reasonCode));

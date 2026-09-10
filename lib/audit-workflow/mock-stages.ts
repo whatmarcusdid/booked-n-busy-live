@@ -58,6 +58,7 @@ import { persistCriteriaByGroup } from "./progress-groups";
 import { isRealHomeCheck, RULE_VERSION } from "./rubric/model";
 import {
   assessUrlSafety,
+  resolveUrlSafely,
   type UrlSafetyDeps,
 } from "../url-safety";
 import { writesReport, writesScores } from "./outcome";
@@ -287,6 +288,12 @@ async function persistHomeFetchDiagnostic(
     failure_type: diagnostic.failureType,
     http_status: diagnostic.httpStatus ?? null,
     provider_message: providerMessage ?? null,
+    ...(diagnostic.rejectedHop != null
+      ? {
+          rejected_hop: diagnostic.rejectedHop,
+          rejected_url: diagnostic.rejectedUrl ?? null,
+        }
+      : {}),
     ...(customerMessage ? { customer_message: customerMessage } : {}),
     ...(retry
       ? {
@@ -312,6 +319,12 @@ async function persistHomeFetchDiagnostic(
           : {}),
         ...(providerMessage ? { provider_message: providerMessage } : {}),
         ...(customerMessage ? { customer_message: customerMessage } : {}),
+        ...(diagnostic.rejectedHop != null
+          ? {
+              rejected_hop: diagnostic.rejectedHop,
+              rejected_url: diagnostic.rejectedUrl,
+            }
+          : {}),
       },
     },
   ]);
@@ -382,6 +395,13 @@ async function recordRobotsPreflight(
     crawl_delay_seconds: robots.crawlDelaySeconds,
     crawl_delay_honored: false,
     checked_before_fetch: true,
+    ...(robots.reasonCode
+      ? {
+          reason_code: robots.reasonCode,
+          rejected_hop: robots.rejectedHop ?? null,
+          rejected_url: robots.rejectedUrl ?? null,
+        }
+      : {}),
   });
 }
 
@@ -408,7 +428,15 @@ async function recordRobotsSkippedPage(
 async function recordProhibitedContent(
   store: AuditWorkflowStore,
   auditId: string,
-  safety: Extract<Awaited<ReturnType<typeof assessUrlSafety>>, { ok: false }>,
+  safety: {
+    reasonCode: string;
+    prohibited?: Extract<
+      Awaited<ReturnType<typeof assessUrlSafety>>,
+      { ok: false }
+    >["prohibited"];
+    rejectedHop?: number;
+    rejectedUrl?: string;
+  },
 ): Promise<void> {
   if (safety.reasonCode !== "PROHIBITED_CONTENT" || !safety.prohibited) return;
   await store.recordEvent(auditId, PROHIBITED_CONTENT_BLOCKED_EVENT, {
@@ -417,6 +445,12 @@ async function recordProhibitedContent(
     matched_rule: safety.prohibited.matchedRule,
     matched_value: safety.prohibited.matchedValue,
     checked_before_fetch: true,
+    ...(safety.rejectedHop != null
+      ? {
+          rejected_hop: safety.rejectedHop,
+          rejected_url: safety.rejectedUrl ?? null,
+        }
+      : {}),
   });
 }
 
@@ -446,33 +480,44 @@ async function discoverPages(input: {
     return {};
   }
 
-  const fetchSafety = await assessUrlSafety(
-    safety.normalizedUrl,
-    input.safetyDeps,
-  );
+  const fetchSafety = await resolveUrlSafely(safety.normalizedUrl, {
+    ...input.safetyDeps,
+    timeoutMs: safety.bounds.maxFetchDurationMs,
+  });
   if (!fetchSafety.ok) {
     await recordProhibitedContent(input.store, input.auditId, fetchSafety);
     await persistHomeFetchDiagnostic(
       input.store,
       input.auditId,
-      safety.normalizedUrl,
+      fetchSafety.rejectedUrl,
       {
         reasonCode: fetchSafety.reasonCode,
         failureType: "SAFETY_REJECTED",
+        rejectedHop: fetchSafety.rejectedHop,
+        rejectedUrl: fetchSafety.rejectedUrl,
       },
     );
     return { abortTo: "unsupported", reasonCode: fetchSafety.reasonCode };
   }
 
+  const fetchUrl = fetchSafety.finalUrl;
+
   // robots.txt pre-flight, at the same priority as the prohibited-content
   // check: before any real page fetch or screenshot capture. Crawl-delay is
   // read for evidence only and never slows anything down.
+  const fetchRobots: FetchRobotsTxt =
+    input.fetchRobots ??
+    ((args) =>
+      fetchRobotsOverHttp({
+        ...args,
+        safetyDeps: input.safetyDeps,
+      }));
   const robots = await fetchRobotsTxt(
-    fetchSafety.normalizedUrl,
-    input.fetchRobots ?? fetchRobotsOverHttp,
+    fetchUrl,
+    fetchRobots,
     fetchSafety.bounds.maxFetchDurationMs,
   );
-  const homeRobots = isPathAllowed(robots, fetchSafety.normalizedUrl);
+  const homeRobots = isPathAllowed(robots, fetchUrl);
   await recordRobotsPreflight(input.store, input.auditId, robots, homeRobots);
 
   if (!homeRobots.allowed) {
@@ -482,7 +527,7 @@ async function discoverPages(input: {
     await persistHomeFetchDiagnostic(
       input.store,
       input.auditId,
-      fetchSafety.normalizedUrl,
+      fetchUrl,
       {
         reasonCode: ROBOTS_DISALLOWED_REASON_CODE,
         failureType: "SAFETY_REJECTED",
@@ -503,7 +548,7 @@ async function discoverPages(input: {
     { category: "browserless_content", operationKey: "content:home:1" },
     () =>
       fetchHomePage({
-        url: fetchSafety.normalizedUrl,
+        url: fetchUrl,
         timeoutMs: fetchSafety.bounds.maxFetchDurationMs,
         maxResponseBytes: fetchSafety.bounds.maxResponseBytes,
       }),
@@ -537,7 +582,7 @@ async function discoverPages(input: {
         { category: "browserless_content", operationKey: "content:home:2" },
         () =>
           fetchHomePage({
-            url: fetchSafety.normalizedUrl,
+            url: fetchUrl,
             timeoutMs: fetchSafety.bounds.maxFetchDurationMs,
             maxResponseBytes: fetchSafety.bounds.maxResponseBytes,
             ...(plan.userAgent ? { userAgent: plan.userAgent } : {}),
@@ -554,7 +599,7 @@ async function discoverPages(input: {
     await persistHomeFetchDiagnostic(
       input.store,
       input.auditId,
-      fetchSafety.normalizedUrl,
+      fetchUrl,
       diagnostic,
       { attemptsUsed, manualRetryAvailable: allowsManualRetry(diagnostic) },
     );
@@ -569,7 +614,7 @@ async function discoverPages(input: {
     };
   }
 
-  if (fetched.redirected || fetched.finalUrl !== fetchSafety.normalizedUrl) {
+  if (fetched.redirected || fetched.finalUrl !== fetchUrl) {
     const dest = await assessUrlSafety(fetched.finalUrl, input.safetyDeps);
     if (!dest.ok) {
       await persistHomeFetchDiagnostic(
@@ -591,7 +636,7 @@ async function discoverPages(input: {
   }
 
   const home = pageFromRender({
-    url: fetchSafety.normalizedUrl,
+    url: fetchUrl,
     html: fetched.html,
     status: fetched.status,
     finalUrl: fetched.finalUrl,
@@ -610,7 +655,7 @@ async function discoverPages(input: {
   if (shouldProbe) {
     try {
       const securityProbe = await probeHttpsScheme({
-        websiteUrl: fetchSafety.normalizedUrl,
+        websiteUrl: fetchUrl,
         timeoutMs: fetchSafety.bounds.maxFetchDurationMs,
         maxRedirects: fetchSafety.bounds.maxRedirects,
         safetyDeps: input.safetyDeps,
@@ -631,7 +676,7 @@ async function discoverPages(input: {
 
   const discovered = selectCategoryUrls(
     fetched.html,
-    fetched.finalUrl || fetchSafety.normalizedUrl,
+    fetched.finalUrl || fetchUrl,
   );
   const categoryPages: PageInput[] = [];
   let attempted = 1;
@@ -640,7 +685,7 @@ async function discoverPages(input: {
     if (attempted >= fetchSafety.bounds.maxPagesPerDomain) {
       categoryPages.push(
         unassessedPage(
-          fetchSafety.normalizedUrl,
+          fetchUrl,
           pageType,
           "PAGE_LIMIT_REACHED",
         ),
@@ -651,7 +696,7 @@ async function discoverPages(input: {
     const candidate = discovered[pageType];
     if (!candidate) {
       categoryPages.push(
-        unassessedPage(fetchSafety.normalizedUrl, pageType, "NOT_FOUND"),
+        unassessedPage(fetchUrl, pageType, "NOT_FOUND"),
       );
       continue;
     }
@@ -673,7 +718,7 @@ async function discoverPages(input: {
       );
       categoryPages.push(
         unassessedPage(
-          fetchSafety.normalizedUrl,
+          fetchUrl,
           pageType,
           ROBOTS_DISALLOWED_REASON_CODE,
           candidate,
@@ -683,11 +728,14 @@ async function discoverPages(input: {
     }
 
     attempted += 1;
-    const pageSafety = await assessUrlSafety(candidate, input.safetyDeps);
+    const pageSafety = await resolveUrlSafely(candidate, {
+      ...input.safetyDeps,
+      timeoutMs: fetchSafety.bounds.maxFetchDurationMs,
+    });
     if (!pageSafety.ok) {
       categoryPages.push(
         unassessedPage(
-          fetchSafety.normalizedUrl,
+          fetchUrl,
           pageType,
           pageSafety.reasonCode,
           candidate,
@@ -704,7 +752,7 @@ async function discoverPages(input: {
       },
       () =>
         fetchHomePage({
-          url: pageSafety.normalizedUrl,
+          url: pageSafety.finalUrl,
           timeoutMs: pageSafety.bounds.maxFetchDurationMs,
           maxResponseBytes: pageSafety.bounds.maxResponseBytes,
         }),
@@ -715,10 +763,10 @@ async function discoverPages(input: {
     if (!pageFetch.ok) {
       categoryPages.push(
         unassessedPage(
-          fetchSafety.normalizedUrl,
+          fetchUrl,
           pageType,
           pageFetch.reasonCode,
-          pageSafety.normalizedUrl,
+          pageSafety.finalUrl,
         ),
       );
       continue;
@@ -726,13 +774,13 @@ async function discoverPages(input: {
 
     if (
       pageFetch.redirected ||
-      pageFetch.finalUrl !== pageSafety.normalizedUrl
+      pageFetch.finalUrl !== pageSafety.finalUrl
     ) {
       const dest = await assessUrlSafety(pageFetch.finalUrl, input.safetyDeps);
       if (!dest.ok) {
         categoryPages.push(
           unassessedPage(
-            fetchSafety.normalizedUrl,
+            fetchUrl,
             pageType,
             dest.reasonCode,
             pageFetch.finalUrl,
@@ -744,7 +792,7 @@ async function discoverPages(input: {
 
     categoryPages.push(
       pageFromRender({
-        url: pageSafety.normalizedUrl,
+        url: pageSafety.finalUrl,
         html: pageFetch.html,
         status: pageFetch.status,
         finalUrl: pageFetch.finalUrl,

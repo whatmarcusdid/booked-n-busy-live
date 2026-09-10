@@ -4,12 +4,20 @@ export {
   defaultLookupAddresses,
   normalizeSubmittedUrl,
   type LookupAddresses,
+  type ProbeRedirectHop,
   type ProbeRedirects,
   type ProhibitedContentMatch,
+  type RedirectHopResult,
   type RedirectProbeResult,
   type UrlSafetyDeps,
   type UrlSafetyResult,
 } from "./guard";
+export {
+  defaultRedirectHopFetch,
+  resolveUrlSafely,
+  type ResolvedRedirectHop,
+  type ResolveUrlSafelyResult,
+} from "./resolve";
 export {
   classifyProhibitedContent,
   coveredProhibitedCategories,

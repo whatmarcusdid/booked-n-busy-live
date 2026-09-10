@@ -48,6 +48,9 @@ export interface RobotsTxt {
    * for a delay and we knowingly did not honour it.
    */
   crawlDelaySeconds: number | null;
+  reasonCode?: string;
+  rejectedHop?: number;
+  rejectedUrl?: string;
 }
 
 export interface RobotsDecision {
@@ -154,7 +157,14 @@ export type FetchRobotsTxt = (input: {
   timeoutMs: number;
 }) => Promise<
   | { ok: true; body: string; httpStatus: number }
-  | { ok: false; httpStatus?: number; notFound?: boolean }
+  | {
+      ok: false;
+      httpStatus?: number;
+      notFound?: boolean;
+      reasonCode?: string;
+      rejectedHop?: number;
+      rejectedUrl?: string;
+    }
 >;
 
 export async function fetchRobotsTxt(
@@ -177,6 +187,9 @@ export async function fetchRobotsTxt(
       status: result.notFound ? "not_found" : "unreachable",
       url,
       httpStatus: result.httpStatus,
+      reasonCode: result.reasonCode,
+      rejectedHop: result.rejectedHop,
+      rejectedUrl: result.rejectedUrl,
     };
   }
 

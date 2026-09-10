@@ -9,7 +9,7 @@ import {
   pageScreenshotStorageKey,
   type ArtifactStorage,
 } from "../storage/audit-artifacts";
-import { assessUrlSafety, type UrlSafetyDeps } from "../url-safety";
+import { assessUrlSafety, resolveUrlSafely, type UrlSafetyDeps } from "../url-safety";
 import type { AuditWorkflowStore } from "./store";
 
 export const SCREENSHOT_RETENTION_CLASS = "pending_policy";
@@ -81,15 +81,18 @@ async function captureOneViewport(input: {
   const existing = await input.store.hasEvidence(input.auditId, evidenceKey);
   if (existing) return;
 
-  const safety = await assessUrlSafety(input.screenshotUrl, input.safetyDeps);
+  const safety = await resolveUrlSafely(input.screenshotUrl, input.safetyDeps);
   if (!safety.ok) {
-    await recordUnavailable(input, evidenceKey, safety.reasonCode);
+    await recordUnavailable(input, evidenceKey, safety.reasonCode, {
+      rejectedHop: safety.rejectedHop,
+      rejectedUrl: safety.rejectedUrl,
+    });
     return;
   }
 
   const capture = input.captureScreenshot ?? captureBrowserlessScreenshot;
   const shot = await capture({
-    url: safety.normalizedUrl,
+    url: safety.finalUrl,
     timeoutMs: safety.bounds.maxFetchDurationMs,
     maxResponseBytes: safety.bounds.maxResponseBytes,
     viewport: input.viewport,
@@ -100,7 +103,7 @@ async function captureOneViewport(input: {
     return;
   }
 
-  if (shot.redirected || shot.finalUrl !== safety.normalizedUrl) {
+  if (shot.redirected || shot.finalUrl !== safety.finalUrl) {
     const dest = await assessUrlSafety(shot.finalUrl, input.safetyDeps);
     if (!dest.ok) {
       await recordUnavailable(input, evidenceKey, dest.reasonCode);
@@ -176,6 +179,7 @@ async function recordUnavailable(
   },
   evidenceKey: string,
   reasonCode: string,
+  rejection?: { rejectedHop: number; rejectedUrl: string },
 ): Promise<void> {
   if (input.pageId) {
     await input.store.mergePageMetadata(input.auditId, input.pageId, {
@@ -184,6 +188,12 @@ async function recordUnavailable(
         artifact_id: null,
         reason_code: reasonCode,
         viewport: input.viewport,
+        ...(rejection
+          ? {
+              rejected_hop: rejection.rejectedHop,
+              rejected_url: rejection.rejectedUrl,
+            }
+          : {}),
       },
     });
   }
@@ -203,6 +213,12 @@ async function recordUnavailable(
         screenshot_available: false,
         reason_code: reasonCode,
         viewport: input.viewport,
+        ...(rejection
+          ? {
+              rejected_hop: rejection.rejectedHop,
+              rejected_url: rejection.rejectedUrl,
+            }
+          : {}),
       },
     },
   ]);

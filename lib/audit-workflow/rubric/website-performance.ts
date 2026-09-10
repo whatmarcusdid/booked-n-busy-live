@@ -17,6 +17,8 @@ export interface PerformanceSignal {
   tbt_ms?: number;
   cls?: number;
   reason_code?: string;
+  rejected_hop?: number;
+  rejected_url?: string;
 }
 
 export interface WebsitePerformanceResult {

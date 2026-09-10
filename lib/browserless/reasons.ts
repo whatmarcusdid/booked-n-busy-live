@@ -79,6 +79,9 @@ export interface HomeFetchDiagnostic {
   failureType: HomeFetchFailureType;
   httpStatus?: number;
   providerMessage?: string;
+  /** 0-based hop index when a redirect pre-flight rejected the URL. */
+  rejectedHop?: number;
+  rejectedUrl?: string;
 }
 
 const SAFETY_REASON_CODES = new Set([

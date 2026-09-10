@@ -30,9 +30,24 @@ export interface RedirectProbeResult {
 
 export type ProbeRedirects = (url: string) => Promise<RedirectProbeResult>;
 
+/**
+ * Lightweight hop fetch used by `resolveUrlSafely`. Distinct from `probe`,
+ * which `assessUrlSafety` uses only when a caller injects one (production
+ * does not).
+ */
+export type RedirectHopResult =
+  | { ok: true; status: number; location?: string }
+  | { ok: false; kind: "timeout" | "connection" };
+
+export type ProbeRedirectHop = (
+  url: string,
+  timeoutMs: number,
+) => Promise<RedirectHopResult>;
+
 export interface UrlSafetyDeps {
   lookup?: LookupAddresses;
   probe?: ProbeRedirects;
+  hopFetch?: ProbeRedirectHop;
   bounds?: Partial<UrlSafetyBounds>;
 }
 
