@@ -19,6 +19,10 @@ import {
   type ProcessClarityMatch,
 } from "./process-clarity";
 import { assessServiceArea, type ServiceAreaMatch } from "./service-area";
+import {
+  assessReviewsAboveFold,
+  type ReviewsMatch,
+} from "./reviews-above-fold";
 
 export interface HomeScoringSignals {
   finalUrl: string;
@@ -30,6 +34,7 @@ export interface HomeScoringSignals {
   seo: SeoBasicsSignal | null;
   credentials: CredentialsMatch | null;
   serviceArea: ServiceAreaMatch | null;
+  reviews: ReviewsMatch | null;
   process: ProcessClarityMatch | null;
   faq: FaqMatch | null;
   offer: OfferMatch | null;
@@ -65,6 +70,10 @@ export function extractHomeScoringSignals(input: {
     homeAssessed: true,
     html: input.html,
   });
+  const reviews = assessReviewsAboveFold({
+    homeAssessed: true,
+    html: input.html,
+  });
   const process = assessProcessClarity({
     homeAssessed: true,
     html: input.html,
@@ -86,6 +95,7 @@ export function extractHomeScoringSignals(input: {
     seo: seo.signal ?? null,
     credentials: credentials.match ?? null,
     serviceArea: serviceArea.match ?? null,
+    reviews: reviews.match ?? null,
     process: process.match ?? null,
     faq: faq.match ?? null,
     offer: offer.match ?? null,
@@ -162,4 +172,23 @@ export function offerOutcomeFromSignal(
 ): ReturnType<typeof assessOfferDifferentiation>["outcome"] {
   if (!offer) return "fail";
   return offer.prominent ? "pass" : "partial";
+}
+
+/**
+ * Absence is `needs_review`, not fail: a JS widget may have missed the
+ * snapshot. JSON-LD is pass; every other found signal is partial.
+ */
+export function reviewsOutcomeFromSignal(
+  reviews: ReviewsMatch | null | undefined,
+): ReturnType<typeof assessReviewsAboveFold>["outcome"] {
+  if (!reviews || reviews.kind === "snapshot_inconclusive") {
+    return "needs_review";
+  }
+  if (
+    reviews.kind === "aggregaterating_jsonld" ||
+    reviews.kind === "review_jsonld"
+  ) {
+    return "pass";
+  }
+  return "partial";
 }

@@ -1,17 +1,19 @@
 import type { CheckOutcome } from "./model";
 
 /**
- * Fail-path reason codes for this milestone (PRD Fix First severity ranking).
+ * Fail-path reason codes from Decision #11's HTTPS implementation detail.
  *
- * TLS certificate outcomes (`https_tls_error`, `https_cert_invalid`,
- * `https_cert_expired`, `https_error_response`) are deliberately absent —
- * handshake failure currently falls through to HTTP fallback rather than
- * becoming its own class.
+ * Certificate codes are classified from errors Node's TLS stack already
+ * surfaces. This is not new certificate validation — handshake failure used
+ * to be treated as a connection miss and then as `https_absent`.
  */
 export const SECURITY_HEALTH_REASON_CODES = [
   "https_absent",
   "https_timeout",
   "https_downgrade_redirect",
+  "https_tls_error",
+  "https_cert_invalid",
+  "https_cert_expired",
 ] as const;
 
 export type SecurityHealthReasonCode =
@@ -23,6 +25,8 @@ export interface SchemeHop {
   url: string;
   scheme: UrlScheme;
   status: number | null;
+  /** Scheme of the Location target, when this hop redirected. */
+  locationScheme?: UrlScheme;
 }
 
 /**
@@ -35,8 +39,12 @@ export interface SecurityHealthProbe {
   initialScheme: UrlScheme;
   finalScheme: UrlScheme | null;
   finalUrl: string | null;
-  httpsAttempt: "responded" | "timeout" | "connection_failed";
+  httpsAttempt: "responded" | "timeout" | "connection_failed" | "tls_failed";
   usedHttpFallback: boolean;
+  tlsReasonCode?: Extract<
+    SecurityHealthReasonCode,
+    "https_tls_error" | "https_cert_invalid" | "https_cert_expired"
+  >;
 }
 
 export interface SecurityHealthSignal {
@@ -56,10 +64,20 @@ export interface SecurityHealthResult {
   locator?: string;
 }
 
-export function isHttpsDowngrade(
+export function isHttpsDowngrade(reasonCode: string | undefined): boolean {
+  return reasonCode === "https_downgrade_redirect";
+}
+
+/** Decision #11 rank-1 signals: the site configured HTTPS against itself. */
+export function isActiveSecurityMisconfiguration(
   reasonCode: string | undefined,
 ): boolean {
-  return reasonCode === "https_downgrade_redirect";
+  return (
+    reasonCode === "https_downgrade_redirect" ||
+    reasonCode === "https_tls_error" ||
+    reasonCode === "https_cert_invalid" ||
+    reasonCode === "https_cert_expired"
+  );
 }
 
 function schemeOf(url: string): UrlScheme | "other" {
@@ -83,27 +101,97 @@ function signalFromFinalUrl(finalUrl: string): SecurityHealthSignal | null {
 }
 
 /**
- * Classify a completed probe. A final https scheme always passes — including
- * a safe HTTP→HTTPS upgrade after HTTPS failed at the connection layer.
+ * HTTPS→HTTP anywhere in the observed chain, including a Location we did
+ * not fetch (SSRF-blocked, max-redirects).
+ */
+export function chainHasHttpsToHttpDowngrade(
+  probe: Pick<SecurityHealthProbe, "schemes" | "hops" | "initialScheme">,
+): boolean {
+  if (probe.initialScheme !== "https") return false;
+  let sawHttps = false;
+  for (const scheme of probe.schemes) {
+    if (scheme === "https") sawHttps = true;
+    if (sawHttps && scheme === "http") return true;
+  }
+  for (const hop of probe.hops) {
+    if (hop.scheme === "https" && hop.locationScheme === "http") return true;
+  }
+  return false;
+}
+
+function failSignal(
+  probe: SecurityHealthProbe,
+  reasonCode: SecurityHealthReasonCode,
+  protocol: SecurityHealthSignal["protocol"],
+  finalUrl: string,
+): SecurityHealthResult {
+  return {
+    outcome: "fail",
+    signal: {
+      finalUrl,
+      protocol,
+      reasonCode,
+      schemes: probe.schemes,
+      hops: probe.hops,
+      httpsAttempt: probe.httpsAttempt,
+      usedHttpFallback: probe.usedHttpFallback,
+    },
+    value: finalUrl,
+    locator: "https_scheme_probe",
+  };
+}
+
+/**
+ * Classify a completed probe. A final https scheme passes unless the chain
+ * already moved HTTPS→HTTP (active misconfiguration) or TLS already failed.
  *
- * Fail codes, when HTTP is what actually resolved:
- *   - https_downgrade_redirect: HTTPS answered at the HTTP layer and the
- *     chain ended on http (active misconfiguration).
+ * Fail codes:
+ *   - https_downgrade_redirect: HTTPS answered and the chain moved to HTTP.
+ *   - https_cert_expired / https_cert_invalid / https_tls_error: Node's TLS
+ *     stack already rejected the handshake.
  *   - https_timeout: HTTPS timed out, HTTP works.
  *   - https_absent: HTTPS was refused / otherwise unreachable, HTTP works.
  */
 export function classifySecurityHealthProbe(
   probe: SecurityHealthProbe,
 ): SecurityHealthResult {
-  const finalUrl = probe.finalUrl ?? undefined;
-  const protocol = probe.finalScheme ?? "other";
+  const fallbackUrl =
+    probe.finalUrl ?? probe.hops[probe.hops.length - 1]?.url ?? "";
+  const protocol: SecurityHealthSignal["protocol"] =
+    probe.finalScheme ??
+    (probe.hops[probe.hops.length - 1]?.scheme as UrlScheme | undefined) ??
+    "other";
 
-  if (!probe.finalScheme || !finalUrl || protocol === "other") {
+  if (probe.tlsReasonCode) {
+    if (!fallbackUrl) return { outcome: "not_assessed" };
+    return failSignal(probe, probe.tlsReasonCode, protocol, fallbackUrl);
+  }
+
+  if (chainHasHttpsToHttpDowngrade(probe)) {
+    if (!fallbackUrl) return { outcome: "not_assessed" };
+    return failSignal(
+      probe,
+      "https_downgrade_redirect",
+      protocol === "other" ? "http" : protocol,
+      fallbackUrl,
+    );
+  }
+
+  if (!probe.finalScheme || !probe.finalUrl || protocol === "other") {
+    if (probe.httpsAttempt === "timeout" && fallbackUrl) {
+      return failSignal(probe, "https_timeout", "http", fallbackUrl);
+    }
+    if (
+      (probe.httpsAttempt === "connection_failed" || probe.usedHttpFallback) &&
+      fallbackUrl
+    ) {
+      return failSignal(probe, "https_absent", "http", fallbackUrl);
+    }
     return { outcome: "not_assessed" };
   }
 
   const signal: SecurityHealthSignal = {
-    finalUrl,
+    finalUrl: probe.finalUrl,
     protocol,
     schemes: probe.schemes,
     hops: probe.hops,
@@ -115,30 +203,15 @@ export function classifySecurityHealthProbe(
     return {
       outcome: "pass",
       signal,
-      value: finalUrl,
+      value: probe.finalUrl,
       locator: "https_scheme_probe",
     };
   }
 
-  let reasonCode: SecurityHealthReasonCode;
-  if (
-    probe.httpsAttempt === "responded" &&
-    probe.initialScheme === "https" &&
-    probe.finalScheme === "http"
-  ) {
-    reasonCode = "https_downgrade_redirect";
-  } else if (probe.httpsAttempt === "timeout") {
-    reasonCode = "https_timeout";
-  } else {
-    reasonCode = "https_absent";
-  }
+  const reasonCode: SecurityHealthReasonCode =
+    probe.httpsAttempt === "timeout" ? "https_timeout" : "https_absent";
 
-  return {
-    outcome: "fail",
-    signal: { ...signal, reasonCode },
-    value: finalUrl,
-    locator: "https_scheme_probe",
-  };
+  return failSignal(probe, reasonCode, protocol, probe.finalUrl);
 }
 
 /**
@@ -165,9 +238,6 @@ export function assessSecurityHealth(
     if (classified.outcome !== "not_assessed") {
       return classified;
     }
-    // Probe ran but could not resolve a final scheme. Fall through to the
-    // home-fetch URL so an HTTP-only site Browserless already rendered is
-    // still a fail rather than silently not_assessed.
   }
 
   if (!input.finalUrl) {

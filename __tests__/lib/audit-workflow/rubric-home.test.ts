@@ -4,6 +4,7 @@ import { RULE_VERSION, scoreAssessedChecks } from "@/lib/audit-workflow/rubric/m
 import { assessContactForms } from "@/lib/audit-workflow/rubric/contact-forms";
 import { assessCredentials } from "@/lib/audit-workflow/rubric/credentials";
 import { assessFaq } from "@/lib/audit-workflow/rubric/faq";
+import { assessReviewsAboveFold } from "@/lib/audit-workflow/rubric/reviews-above-fold";
 import { assessOfferDifferentiation } from "@/lib/audit-workflow/rubric/offer-differentiation";
 import { assessProcessClarity } from "@/lib/audit-workflow/rubric/process-clarity";
 import { assessServiceArea } from "@/lib/audit-workflow/rubric/service-area";
@@ -317,17 +318,17 @@ describe("v2 home-page rubric", () => {
         .filter((row) => row.findings.mock === false)
         .map((row) => row.criterion_key)
         .sort(),
-    ).toEqual(["license_insurance", "service_area_clarity"]);
+    ).toEqual(["license_insurance", "reviews_above_fold", "service_area_clarity"]);
     expect(
       trustRows
         .filter((row) => row.findings.mock === true)
         .map((row) => row.criterion_key)
         .sort(),
-    ).toEqual(["key_person_credibility", "reviews_above_fold"]);
+    ).toEqual(["key_person_credibility"]);
     expect(
       store.pillars.find((row) => row.pillar_key === "trust_signals")
         ?.criteria_count,
-    ).toBe(4);
+    ).toBe(3);
     expect(
       store.criteria.find((row) => row.criterion_key === "license_insurance"),
     ).toMatchObject({
@@ -347,6 +348,7 @@ describe("v2 home-page rubric", () => {
       "phone_cta_visibility",
       "process_clarity",
       "quote_booking_cta_visibility",
+      "reviews_above_fold",
       "security_health",
       "seo_ai_search_readiness",
       "service_area_clarity",
@@ -357,7 +359,7 @@ describe("v2 home-page rubric", () => {
         .filter((row) => row.findings.mock === true)
         .map((row) => row.criterion_key)
         .sort(),
-    ).toEqual(["key_person_credibility", "reviews_above_fold"]);
+    ).toEqual(["key_person_credibility"]);
     expect(
       store.criteria.every((row) => row.rule_version === RULE_VERSION),
     ).toBe(true);
@@ -526,6 +528,14 @@ describe("v2 home-page rubric", () => {
       assessed: false,
       mock: false,
     });
+    const reviewsFold = store.criteria.find(
+      (row) => row.criterion_key === "reviews_above_fold",
+    );
+    expect(reviewsFold?.findings).toMatchObject({
+      outcome: "not_assessed",
+      assessed: false,
+      mock: false,
+    });
     const performance = store.criteria.find(
       (row) => row.criterion_key === "website_performance",
     );
@@ -535,8 +545,8 @@ describe("v2 home-page rubric", () => {
       mock: false,
     });
 
-    const trustMocks = ["reviews_above_fold", "key_person_credibility"].map(
-      (key) => deterministicMockScore(auditId, key),
+    const trustMocks = ["key_person_credibility"].map((key) =>
+      deterministicMockScore(auditId, key),
     );
     const expectedGrowth = scoreAssessedChecks([]);
     const expectedLead = scoreAssessedChecks([]);
@@ -557,7 +567,7 @@ describe("v2 home-page rubric", () => {
       score: expectedLead.score,
     });
     expect(trust).toMatchObject({
-      criteria_count: 2,
+      criteria_count: 1,
       score: expectedTrust.score,
       rule_version: RULE_VERSION,
     });
@@ -568,7 +578,7 @@ describe("v2 home-page rubric", () => {
       store.criteria.filter(
         (row) => row.auditId === auditId && row.findings.mock === true,
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it("keeps flag-off mock scores for the two checks", async () => {
@@ -951,17 +961,17 @@ describe("v2 home-page rubric", () => {
         .filter((row) => row.findings.mock === false)
         .map((row) => row.criterion_key)
         .sort(),
-    ).toEqual(["license_insurance", "service_area_clarity"]);
+    ).toEqual(["license_insurance", "reviews_above_fold", "service_area_clarity"]);
     expect(
       trustRows
         .filter((row) => row.findings.mock === true)
         .map((row) => row.criterion_key)
         .sort(),
-    ).toEqual(["key_person_credibility", "reviews_above_fold"]);
+    ).toEqual(["key_person_credibility"]);
     expect(
       store.pillars.find((row) => row.pillar_key === "trust_signals")
         ?.criteria_count,
-    ).toBe(4);
+    ).toBe(3);
   });
 
   it("scores footer-only credential language as partial", async () => {
@@ -1624,7 +1634,10 @@ describe("phone / security extractors", () => {
         .outcome,
     ).toBe("not_assessed");
     expect(
-      assessFaq({ homeAssessed: false, html: FAQ_SECTION_HTML }).outcome,
+      assessReviewsAboveFold({
+        homeAssessed: false,
+        html: TEL_HEADER_HTML,
+      }).outcome,
     ).toBe("not_assessed");
     expect(
       assessOfferDifferentiation({

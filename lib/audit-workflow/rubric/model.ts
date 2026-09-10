@@ -13,6 +13,12 @@ export const REAL_HOME_CHECKS = {
     pillar: "trust_signals",
     weight: 0.25,
   },
+  reviews_above_fold: {
+    key: "reviews_above_fold",
+    name: "Reviews Above the Fold",
+    pillar: "trust_signals",
+    weight: 0.25,
+  },
   phone_cta_visibility: {
     key: "phone_cta_visibility",
     name: "Phone CTA Visibility",
@@ -102,18 +108,7 @@ export function scoreAssessedChecks(
 }
 
 export function isRealHomeCheck(key: string): boolean {
-  return (
-    key === "license_insurance" ||
-    key === "service_area_clarity" ||
-    key === "phone_cta_visibility" ||
-    key === "quote_booking_cta_visibility" ||
-    key === "seo_ai_search_readiness" ||
-    key === "security_health" ||
-    key === "process_clarity" ||
-    key === "faq_common_concerns" ||
-    key === "offer_differentiation" ||
-    key === "website_performance"
-  );
+  return Object.prototype.hasOwnProperty.call(REAL_HOME_CHECKS, key);
 }
 
 export function pillarSummary(

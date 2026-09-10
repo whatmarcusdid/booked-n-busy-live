@@ -98,8 +98,9 @@ import {
  * case the v2 real home checks (license_insurance, service_area_clarity,
  * phone_cta_visibility, quote_booking_cta_visibility, process_clarity,
  * website_performance, seo_ai_search_readiness, security_health,
- * faq_common_concerns, offer_differentiation) are scored from the home
- * fetch and /performance result. Remaining catalog keys stay mock.
+ * faq_common_concerns, offer_differentiation, reviews_above_fold) are
+ * scored from the home fetch and /performance result. Remaining catalog
+ * keys stay mock (key_person_credibility).
  */
 
 function deterministicScore(auditId: string, key: string): number {

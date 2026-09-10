@@ -1,12 +1,11 @@
+import { failAuditFromCurrentState } from "./fail-audit";
 import { runAuditPipeline } from "./pipeline";
 import { createSupabaseAuditStore } from "./store";
 import type { AuditWorkflowStore } from "./store";
 import {
-  isAuditWorkflowState,
   WORKFLOW_START_FAILED_EVENT,
   WORKFLOW_START_FAILED_REASON,
 } from "./types";
-import { describeDatabaseError } from "../supabase/errors";
 
 export type StartAuditWorkflowResult =
   | { started: true; mode: "workflow" | "inline" }
@@ -66,24 +65,9 @@ async function failAuditAtStart(
   auditId: string,
   cause: unknown,
 ): Promise<void> {
-  try {
-    await store.recordEvent(auditId, WORKFLOW_START_FAILED_EVENT, {
-      reason_code: WORKFLOW_START_FAILED_REASON,
-      failure_type: WORKFLOW_START_FAILED_REASON,
-      error: describeDatabaseError(cause),
-    });
-
-    const audit = await store.getAudit(auditId);
-    const fromState =
-      audit && isAuditWorkflowState(audit.current_state)
-        ? audit.current_state
-        : "submitted";
-
-    await store.recordTransition(auditId, fromState, "failed");
-  } catch (markError) {
-    console.error(
-      `Could not mark audit ${auditId} failed after workflow start failed:`,
-      describeDatabaseError(markError),
-    );
-  }
+  await failAuditFromCurrentState(store, auditId, cause, {
+    eventType: WORKFLOW_START_FAILED_EVENT,
+    reasonCode: WORKFLOW_START_FAILED_REASON,
+    markFailedLogContext: "workflow start failed",
+  });
 }

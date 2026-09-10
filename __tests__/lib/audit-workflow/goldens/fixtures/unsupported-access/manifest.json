@@ -8,7 +8,7 @@
   "expectedCriterionOutcomes": {
     "license_insurance": "not_assessed",
     "service_area_clarity": "not_assessed",
-    "reviews_above_fold": "pass",
+    "reviews_above_fold": "not_assessed",
     "key_person_credibility": "pass",
     "phone_cta_visibility": "not_assessed",
     "quote_booking_cta_visibility": "not_assessed",
@@ -20,14 +20,14 @@
     "offer_differentiation": "not_assessed"
   },
   "expectedPillarScores": {
-    "trust_signals": 0.8,
+    "trust_signals": 0.88,
     "lead_conversion": null,
     "growth_infrastructure": null
   },
   "expectedAssessmentCoverage": {
     "trust_signals": {
-      "assessed": 2,
-      "not_assessed": 2
+      "assessed": 1,
+      "not_assessed": 3
     },
     "lead_conversion": {
       "assessed": 0,

@@ -50,9 +50,15 @@ function mixedMockAndRealAssembled() {
       criterion_key: "reviews_above_fold",
       criterion_name: "Reviews Above the Fold",
       pillar: "trust_signals",
-      score: 0.86,
+      score: 1,
       weight: 0.25,
-      findings: { assessed: true, outcome: "pass", mock: true },
+      findings: {
+        assessed: true,
+        outcome: "pass",
+        confidence: "high",
+        mock: false,
+      },
+      evidence_ids: ["ev-reviews"],
     },
     {
       criterion_key: "key_person_credibility",
@@ -173,9 +179,56 @@ describe("AI narration", () => {
     expect(generate).toHaveBeenCalledTimes(2);
     expect(generate.mock.calls[1][1]).toBeDefined();
     expect(result.source).toBe("template");
+    expect(result.report.executiveSummary).toBe(assembled.executiveSummary);
     expect(result.report.recommendations[0].title).toContain(
       "We found an opportunity",
     );
+  });
+
+  it("uses the second attempt when the first response violates the schema", async () => {
+    const assembled = passingAssembled();
+    const generate = jest
+      .fn<ReturnType<GenerateNarration>, Parameters<GenerateNarration>>()
+      .mockResolvedValueOnce({ not: "valid" })
+      .mockResolvedValueOnce({
+        executiveSummary: "Licensing is hard to find on this site.",
+        recommendations: [
+          {
+            criterion_key: "license_insurance",
+            title: "Show your license",
+            description: "Add license language near the header.",
+            evidence_ids: ["ev-license"],
+          },
+        ],
+      });
+
+    const result = await narrateAssembledReport(assembled, {
+      enabled: true,
+      generate,
+    });
+
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate.mock.calls[1][1]).toEqual(expect.any(String));
+    expect(result.source).toBe("ai");
+    expect(result.report.executiveSummary).toBe(
+      "Licensing is hard to find on this site.",
+    );
+  });
+
+  it("falls back to template when the narrator throws, without rejecting", async () => {
+    const assembled = passingAssembled();
+    const generate = jest.fn(async () => {
+      throw new Error("gateway unavailable");
+    });
+
+    const result = await narrateAssembledReport(assembled, {
+      enabled: true,
+      generate,
+    });
+
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(result.source).toBe("template");
+    expect(result.report.executiveSummary).toBe(assembled.executiveSummary);
   });
 
   it("never sends raw HTML or internal notes to the narrator", () => {
@@ -198,9 +251,9 @@ describe("AI narration", () => {
     const input = buildNarrationInput(assembled);
     const inputKeys = input.checks.map((check) => check.key);
 
-    expect(isMockNarrationCheck("reviews_above_fold")).toBe(true);
+    expect(isMockNarrationCheck("reviews_above_fold")).toBe(false);
     expect(isMockNarrationCheck("key_person_credibility")).toBe(true);
-    expect(inputKeys).not.toContain("reviews_above_fold");
+    expect(inputKeys).toContain("reviews_above_fold");
     expect(inputKeys).not.toContain("key_person_credibility");
     expect(inputKeys).toEqual(
       expect.arrayContaining(["license_insurance", "phone_cta_visibility"]),
@@ -222,11 +275,11 @@ describe("AI narration", () => {
     );
   });
 
-  it("produces narration with no reviews/testimonials claims when the mock check is omitted", async () => {
+  it("produces narration with no key-person claims when the mock check is omitted", async () => {
     const { assembled } = mixedMockAndRealAssembled();
     const generate: GenerateNarration = async (input) => {
       expect(input.checks.map((check) => check.key)).not.toContain(
-        "reviews_above_fold",
+        "key_person_credibility",
       );
       return {
         executiveSummary:
@@ -247,22 +300,14 @@ describe("AI narration", () => {
 
     expect(result.source).toBe("ai");
     expect(result.report.executiveSummary).not.toMatch(
-      /\b(reviews?|testimonials?)\b/i,
+      /\b(key[- ]person|local credibility|owner\/founder)\b/i,
     );
-    expect(result.report.executiveSummary).not.toMatch(
-      /\b(key[- ]person|local credibility)\b/i,
-    );
-    expect(
-      result.report.recommendations
-        .map((row) => `${row.title} ${row.description}`)
-        .join(" "),
-    ).not.toMatch(/\b(reviews?|testimonials?)\b/i);
   });
 
   it("rejects narrator copy that claims an excluded mock-check topic", async () => {
     const { assembled } = mixedMockAndRealAssembled();
     const generate: GenerateNarration = async () => ({
-      executiveSummary: "This site has good review visibility.",
+      executiveSummary: "This site has strong owner/founder credibility.",
       recommendations: assembled.recommendations.map((row) => ({
         criterion_key: row.criterion_key,
         title: `Fix ${row.criterion_key}`,
@@ -279,7 +324,7 @@ describe("AI narration", () => {
     expect(result.source).toBe("template");
     expect(result.report.executiveSummary).toBe(assembled.executiveSummary);
     expect(result.report.executiveSummary).not.toMatch(
-      /\b(reviews?|testimonials?)\b/i,
+      /\b(key[- ]person|owner\/founder|local credibility)\b/i,
     );
   });
 
@@ -316,10 +361,7 @@ describe("AI narration", () => {
       result.report.recommendations.every((row) => row.evidence_ids.length > 0),
     ).toBe(true);
     expect(result.report.recommendations.map((row) => row.criterion_key)).not.toEqual(
-      expect.arrayContaining([
-        "reviews_above_fold",
-        "key_person_credibility",
-      ]),
+      expect.arrayContaining(["key_person_credibility"]),
     );
   });
 });

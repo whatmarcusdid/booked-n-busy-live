@@ -16,7 +16,9 @@ const PNG = Buffer.from(
 
 /** Homepage that links to all three expected internal pages. */
 const HOME_HTML = `<!doctype html><html><head><title>Acme Plumbing</title>
-<meta name="description" content="Licensed and insured plumbing across the metro area, 24/7."></head>
+<meta name="description" content="Licensed and insured plumbing across the metro area, 24/7.">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"AggregateRating","ratingValue":"4.8","reviewCount":"12"}</script>
+</head>
 <body>
 <a href="tel:+15125550100">(512) 555-0100</a>
 <a href="/about">About Us</a>

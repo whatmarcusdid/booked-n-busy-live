@@ -9,7 +9,9 @@ const PNG = Buffer.from(
   "base64",
 );
 
-const HOME_WITH_LINKS = `<html><head><title>Home</title></head><body>
+const HOME_WITH_LINKS = `<html><head><title>Home</title>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"AggregateRating","ratingValue":"4.9","reviewCount":"8"}</script>
+</head><body>
   <a href="/about">About Us</a>
   <a href="/services">Services</a>
   <a href="/contact">Contact</a>
@@ -164,7 +166,9 @@ describe("bounded category discovery", () => {
           !url.includes("/about") &&
           !url.includes("/services") &&
           !url.includes("/contact")
-            ? `<html><body>
+            ? `<html><head>
+              <script type="application/ld+json">{"@context":"https://schema.org","@type":"AggregateRating","ratingValue":"4.9","reviewCount":"8"}</script>
+            </head><body>
               <a href="https://example.com:8080/about">About Us</a>
               <a href="/services">Services</a>
               <a href="/contact">Contact</a>

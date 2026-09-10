@@ -89,10 +89,7 @@ describe("M5 golden fixture suite", () => {
           ),
         ).toBe(true);
         expect(
-          CATALOG_KEYS.filter(
-            (key) =>
-              key !== "reviews_above_fold" && key !== "key_person_credibility",
-          ).every(
+          CATALOG_KEYS.filter((key) => key !== "key_person_credibility").every(
             (key) => manifest.expectedCriterionOutcomes[key] === "not_assessed",
           ),
         ).toBe(true);

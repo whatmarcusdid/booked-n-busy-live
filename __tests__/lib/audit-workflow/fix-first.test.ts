@@ -148,6 +148,9 @@ describe("Fix First severity classes", () => {
     expect(fixFirstSeverityRank(downgrade)).toBe(1);
     expect(fixFirstSeverityKey(absent)).toBe("growth_discovery");
     expect(fixFirstSeverityRank(absent)).toBe(4);
+    expect(
+      selectFixFirst([absent, downgrade], () => 0)[0]?.row.findings.reason_code,
+    ).toBe("https_downgrade_redirect");
   });
 
   it("does not rank by pillar", () => {

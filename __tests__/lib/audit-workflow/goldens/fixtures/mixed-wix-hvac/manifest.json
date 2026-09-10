@@ -2,14 +2,14 @@
   "fixtureVersion": 1,
   "rubricVersion": "v2",
   "scoringBandVersion": "sb-v1",
-  "expectedCompositeScore": 0.76,
+  "expectedCompositeScore": 0.77,
   "expectedScoreBand": "needs_improvement",
   "recommendationChangeNote": "Dropped website_performance (was improve_later). Its outcome is `partial`, and Fix First eligibility is now `fail` only. process_clarity and faq_common_concerns both sit in class 4, so the second slot is still filled.",
   "expectedAuditOutcome": "complete",
   "expectedCriterionOutcomes": {
     "license_insurance": "pass",
     "service_area_clarity": "pass",
-    "reviews_above_fold": "pass",
+    "reviews_above_fold": "needs_review",
     "key_person_credibility": "pass",
     "phone_cta_visibility": "pass",
     "quote_booking_cta_visibility": "pass",
@@ -21,14 +21,14 @@
     "offer_differentiation": "pass"
   },
   "expectedPillarScores": {
-    "trust_signals": 0.91,
+    "trust_signals": 0.94,
     "lead_conversion": 0.63,
     "growth_infrastructure": 0.75
   },
   "expectedAssessmentCoverage": {
     "trust_signals": {
-      "assessed": 4,
-      "not_assessed": 0
+      "assessed": 3,
+      "not_assessed": 1
     },
     "lead_conversion": {
       "assessed": 4,

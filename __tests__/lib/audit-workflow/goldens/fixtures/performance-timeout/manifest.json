@@ -2,13 +2,13 @@
   "fixtureVersion": 1,
   "rubricVersion": "v2",
   "scoringBandVersion": "sb-v1",
-  "expectedCompositeScore": 0.77,
+  "expectedCompositeScore": 0.78,
   "expectedScoreBand": "needs_improvement",
   "expectedAuditOutcome": "complete",
   "expectedCriterionOutcomes": {
     "license_insurance": "pass",
     "service_area_clarity": "pass",
-    "reviews_above_fold": "pass",
+    "reviews_above_fold": "needs_review",
     "key_person_credibility": "pass",
     "phone_cta_visibility": "pass",
     "quote_booking_cta_visibility": "pass",
@@ -20,14 +20,14 @@
     "offer_differentiation": "pass"
   },
   "expectedPillarScores": {
-    "trust_signals": 0.89,
+    "trust_signals": 0.91,
     "lead_conversion": 0.67,
     "growth_infrastructure": 0.75
   },
   "expectedAssessmentCoverage": {
     "trust_signals": {
-      "assessed": 4,
-      "not_assessed": 0
+      "assessed": 3,
+      "not_assessed": 1
     },
     "lead_conversion": {
       "assessed": 3,

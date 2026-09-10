@@ -19,10 +19,6 @@ const MOCK_CHECK_TOPIC_PATTERNS: Record<
   string,
   { pattern: RegExp; label: string }
 > = {
-  reviews_above_fold: {
-    pattern: /\b(reviews?|testimonials?)\b/i,
-    label: "reviews or testimonials",
-  },
   key_person_credibility: {
     pattern:
       /\b(key[- ]person|owner\/founder|founder credibility|owner credibility|local credibility)\b/i,

@@ -14,12 +14,15 @@ import {
 import type { ArtifactStorage } from "../storage/audit-artifacts";
 import type { UrlSafetyDeps } from "../url-safety";
 import type { ProbeHttpsHop } from "./https-probe";
+import { failAuditFromCurrentState } from "./fail-audit";
 import {
   createSupabaseAuditStore,
   type AuditWorkflowStore,
 } from "./store";
 import {
   STAGE_SEQUENCE,
+  WORKFLOW_STAGE_FAILED_EVENT,
+  WORKFLOW_STAGE_FAILED_REASON,
   type AuditWorkflowState,
   type WorkflowTerminalState,
 } from "./types";
@@ -71,35 +74,50 @@ export async function applyStage(input: {
   artifactStorage?: ArtifactStorage;
   budget?: AuditBudget;
 }): Promise<ApplyStageResult> {
-  const result = await input.store.recordTransition(
-    input.auditId,
-    input.fromState,
-    input.toState,
-  );
+  try {
+    const result = await input.store.recordTransition(
+      input.auditId,
+      input.fromState,
+      input.toState,
+    );
 
-  const work = await applyMockStageWork({
-    store: input.store,
-    auditId: input.auditId,
-    websiteUrl: input.websiteUrl,
-    toState: input.toState,
-    outcome: input.outcome,
-    safetyDeps: input.safetyDeps,
-    realScanEnabled: input.realScanEnabled,
-    fetchHomePage: input.fetchHomePage,
-    fetchRobots: input.fetchRobots,
-    probeHttpsHop: input.probeHttpsHop,
-    captureScreenshot: input.captureScreenshot,
-    fetchPerformance: input.fetchPerformance,
-    artifactStorage: input.artifactStorage,
-    budget: input.budget,
-  });
+    const work = await applyMockStageWork({
+      store: input.store,
+      auditId: input.auditId,
+      websiteUrl: input.websiteUrl,
+      toState: input.toState,
+      outcome: input.outcome,
+      safetyDeps: input.safetyDeps,
+      realScanEnabled: input.realScanEnabled,
+      fetchHomePage: input.fetchHomePage,
+      fetchRobots: input.fetchRobots,
+      probeHttpsHop: input.probeHttpsHop,
+      captureScreenshot: input.captureScreenshot,
+      fetchPerformance: input.fetchPerformance,
+      artifactStorage: input.artifactStorage,
+      budget: input.budget,
+    });
 
-  return {
-    transition: result,
-    abortTo: work.abortTo,
-    reasonCode: work.reasonCode,
-    resolveTo: work.resolveTo,
-  };
+    return {
+      transition: result,
+      abortTo: work.abortTo,
+      reasonCode: work.reasonCode,
+      resolveTo: work.resolveTo,
+    };
+  } catch (error) {
+    // Do not rethrow: the durable `"use step"` wrapper would retry, and a
+    // mid-stage store error must fail cleanly the same way start-failure does.
+    await failAuditFromCurrentState(input.store, input.auditId, error, {
+      eventType: WORKFLOW_STAGE_FAILED_EVENT,
+      reasonCode: WORKFLOW_STAGE_FAILED_REASON,
+      markFailedLogContext: "workflow stage failed",
+    });
+    return {
+      transition: "exists",
+      abortTo: "failed",
+      reasonCode: WORKFLOW_STAGE_FAILED_REASON,
+    };
+  }
 }
 
 /**
@@ -135,6 +153,22 @@ export async function runAuditPipeline(
     throw new Error(`Audit not found: ${input.auditId}`);
   }
 
+  try {
+    return await runAuditPipelineStages(input, store);
+  } catch (error) {
+    await failAuditFromCurrentState(store, input.auditId, error, {
+      eventType: WORKFLOW_STAGE_FAILED_EVENT,
+      reasonCode: WORKFLOW_STAGE_FAILED_REASON,
+      markFailedLogContext: "workflow stage failed",
+    });
+    return "failed";
+  }
+}
+
+async function runAuditPipelineStages(
+  input: RunAuditPipelineInput,
+  store: AuditWorkflowStore,
+): Promise<WorkflowTerminalState> {
   const budget = await resolveAuditBudget(store, input.auditId, input.budget);
 
   // Provisional until report finalization resolves the real terminal state

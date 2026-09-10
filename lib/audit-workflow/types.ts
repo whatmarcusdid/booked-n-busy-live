@@ -71,6 +71,14 @@ export const WORKFLOW_STARTED_EVENT = "workflow_started";
 export const WORKFLOW_START_FAILED_EVENT = "workflow_start_failed";
 export const WORKFLOW_START_FAILED_REASON = "WORKFLOW_START_FAILED";
 
+/**
+ * A processing stage threw after `current_state` had already moved off
+ * `submitted` (e.g. `upsertCriteria` during scoring). Same terminal as
+ * start-failure: Failed, with a customer-facing manual retry.
+ */
+export const WORKFLOW_STAGE_FAILED_EVENT = "workflow_stage_failed";
+export const WORKFLOW_STAGE_FAILED_REASON = "WORKFLOW_STAGE_FAILED";
+
 export function isWorkflowTerminalState(
   value: string,
 ): value is WorkflowTerminalState {

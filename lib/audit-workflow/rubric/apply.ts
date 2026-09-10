@@ -30,11 +30,12 @@ import {
   serviceAreaOutcomeFromSignal,
   faqOutcomeFromSignal,
   offerOutcomeFromSignal,
+  reviewsOutcomeFromSignal,
   type HomeScoringSignals,
 } from "./signals";
 import { outcomeFromMockScore } from "../recommendations";
 import { persistCriteriaByGroup } from "../progress-groups";
-import { assessSecurityHealth, isHttpsDowngrade } from "./security-health";
+import { assessSecurityHealth, isActiveSecurityMisconfiguration } from "./security-health";
 import { assessWebsitePerformance } from "./website-performance";
 import type { PerformanceSignal } from "./website-performance";
 
@@ -232,6 +233,9 @@ export async function applyHomeRubric(input: {
   const rawServiceAreaOutcome = assessed
     ? serviceAreaOutcomeFromSignal(signals?.serviceArea)
     : "not_assessed";
+  const rawReviewsOutcome = assessed
+    ? reviewsOutcomeFromSignal(signals?.reviews)
+    : "not_assessed";
   const rawProcessOutcome = assessed
     ? processClarityOutcomeFromSignal(signals?.process)
     : "not_assessed";
@@ -329,6 +333,16 @@ export async function applyHomeRubric(input: {
     rawServiceAreaOutcome,
     signals?.serviceArea?.kind === "radius" ? 0.9 : 0.8,
   );
+  const reviewsCheck = resolveCheck(
+    "reviews_above_fold",
+    rawReviewsOutcome,
+    signals?.reviews?.kind === "aggregaterating_jsonld" ||
+      signals?.reviews?.kind === "review_jsonld"
+      ? 0.95
+      : signals?.reviews?.kind === "review_iframe"
+        ? 0.75
+        : 0.8,
+  );
   const processCheck = resolveCheck(
     "process_clarity",
     rawProcessOutcome,
@@ -362,6 +376,7 @@ export async function applyHomeRubric(input: {
   const seoPoints = pointsForOutcome(seoCheck.outcome);
   const credentialsPoints = pointsForOutcome(credentialsCheck.outcome);
   const serviceAreaPoints = pointsForOutcome(serviceAreaCheck.outcome);
+  const reviewsPoints = pointsForOutcome(reviewsCheck.outcome);
   const processPoints = pointsForOutcome(processCheck.outcome);
   const faqPoints = pointsForOutcome(faqCheck.outcome);
   const offerPoints = pointsForOutcome(offerCheck.outcome);
@@ -375,6 +390,7 @@ export async function applyHomeRubric(input: {
   const seoConfidence = seoCheck.confidence;
   const credentialsConfidence = credentialsCheck.confidence;
   const serviceAreaConfidence = serviceAreaCheck.confidence;
+  const reviewsConfidence = reviewsCheck.confidence;
   const processConfidence = processCheck.confidence;
   const faqConfidence = faqCheck.confidence;
   const offerConfidence = offerCheck.confidence;
@@ -391,6 +407,8 @@ export async function applyHomeRubric(input: {
     !input.realKeys || input.realKeys.has("license_insurance");
   const writeServiceArea =
     !input.realKeys || input.realKeys.has("service_area_clarity");
+  const writeReviews =
+    !input.realKeys || input.realKeys.has("reviews_above_fold");
   const writeProcess = !input.realKeys || input.realKeys.has("process_clarity");
   const writeFaq = !input.realKeys || input.realKeys.has("faq_common_concerns");
   const writeOffer =
@@ -532,6 +550,30 @@ export async function applyHomeRubric(input: {
         },
       )
     : [];
+  const reviewsFoldEvidence = writeReviews
+    ? await writeCheckEvidence(
+        input.store,
+        input.auditId,
+        home?.id ?? null,
+        reviews,
+        {
+          key: "reviews_above_fold",
+          outcome: reviewsCheck.outcome,
+          value: signals?.reviews?.value,
+          locator: signals?.reviews?.locator,
+          snippet: signals?.reviews?.snippet,
+          confidence: reviewsConfidence,
+          collectionMethod: "home_html_parse",
+          url: home?.url,
+          extraMetadata: {
+            kind: signals?.reviews?.kind,
+            ...(reviewsCheck.outcome === "needs_review"
+              ? { reason_code: "SNAPSHOT_INCONCLUSIVE" }
+              : {}),
+          },
+        },
+      )
+    : [];
   const processEvidence = writeProcess
     ? await writeCheckEvidence(
         input.store,
@@ -630,12 +672,12 @@ export async function applyHomeRubric(input: {
           final_url: security.value,
           reason_code: security.signal?.reasonCode,
           schemes: security.signal?.schemes,
-          // An HTTPS→HTTP redirect is something the site configured against
-          // itself, not mere absence of a listener. Decision #12 gives
-          // active misconfigurations the top Fix First severity class.
+          // An HTTPS→HTTP redirect or a TLS/certificate failure is something
+          // the site configured against itself, not mere absence of a
+          // listener. Decision #11/#12 give those the top Fix First class.
           active_misconfiguration:
             securityCheck.outcome === "fail" &&
-            isHttpsDowngrade(security.signal?.reasonCode),
+            isActiveSecurityMisconfiguration(security.signal?.reasonCode),
         },
         securityEvidence,
         securityConfidence,
@@ -730,6 +772,25 @@ export async function applyHomeRubric(input: {
       ),
     );
   }
+  if (writeReviews) {
+    realRows.push(
+      criterionRow(
+        REAL_HOME_CHECKS.reviews_above_fold,
+        reviewsCheck.outcome,
+        reviewsPoints ?? 0,
+        {
+          kind: signals?.reviews?.kind,
+          locator: signals?.reviews?.locator,
+          prominent: signals?.reviews?.prominent,
+          ...(reviewsCheck.outcome === "needs_review"
+            ? { reason_code: "SNAPSHOT_INCONCLUSIVE" }
+            : {}),
+        },
+        reviewsFoldEvidence,
+        reviewsConfidence,
+      ),
+    );
+  }
   if (writeProcess) {
     realRows.push(
       criterionRow(
@@ -815,7 +876,7 @@ export async function applyHomeRubric(input: {
     }
   }
 
-  // Reason codes are merged in one place rather than at each of the ten
+  // Reason codes are merged in one place rather than at each of the
   // criterion call sites, so a new check cannot be added without them.
   const reviewedRows = realRows.map((row) => {
     const review = reviews.get(row.criterion_key);
