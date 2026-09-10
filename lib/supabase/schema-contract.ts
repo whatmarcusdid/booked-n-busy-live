@@ -42,6 +42,10 @@ export const REQUIRED_RPC_PARAMETERS: readonly string[] = [
   "p_utm_content",
   "p_landing_variant",
   "p_public_status_token_hash",
+  "p_primary_trade",
+  "p_secondary_trades",
+  "p_business_model",
+  "p_audit_focus",
   "p_idempotency_key_hash",
 ];
 
@@ -64,8 +68,18 @@ export const REQUIRED_TABLE_COLUMNS: Readonly<
     "kill_switch_reason",
     "retry_of_audit_id",
     "retry_attempt",
+    "audit_focus",
   ],
-  leads: ["id", "email_hash", "email", "qualification_status", "qualified_at"],
+  leads: [
+    "id",
+    "email_hash",
+    "email",
+    "qualification_status",
+    "qualified_at",
+    "primary_trade",
+    "secondary_trades",
+    "business_model",
+  ],
   audit_cost_entries: [
     "audit_id",
     "operation_key",

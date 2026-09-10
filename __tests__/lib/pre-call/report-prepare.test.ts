@@ -101,6 +101,7 @@ describe("cookie-authenticated /report/prepare", () => {
           ok: true,
           auditId: "audit-report-1",
           leadId: "lead-report-1",
+          auditState: "complete" as const,
           view: viewWithRecommendations([
             "Make the phone number obvious above the fold",
           ]),
@@ -129,6 +130,7 @@ describe("cookie-authenticated /report/prepare", () => {
         ok: true,
         auditId: "audit-report-1",
         leadId: "lead-report-1",
+        auditState: "complete" as const,
         view: viewWithRecommendations([]),
       }),
     });
@@ -153,6 +155,7 @@ describe("cookie-authenticated /report/prepare", () => {
         ok: true,
         auditId: "audit-report-1",
         leadId: "lead-report-1",
+        auditState: "complete" as const,
         view: viewWithRecommendations([
           "Make the phone number obvious above the fold",
         ]),

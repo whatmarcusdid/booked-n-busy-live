@@ -62,6 +62,7 @@ function okResults(
     statusToken: STATUS_TOKEN,
     auditId: "audit-1",
     leadId: "lead-1",
+    auditState: "complete",
     view: viewWithRecommendations(titles),
     ...overrides,
   };

@@ -2,9 +2,19 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { BRAND_NAME } from "@/lib/identity";
 import {
+  FAILED_BODY_LEAD,
+  FAILED_BODY_TAIL,
+  FAILED_MANUAL_REVIEW_QUESTION,
   HOW_YOU_EARNED_HEADING,
+  NOT_ASSESSED_CARD_SUBTITLE,
+  NOT_ASSESSED_CARD_TITLE,
+  NOT_ASSESSED_GRADE,
   RECOMMENDED_IMPROVEMENTS_HEADING,
+  REQUEST_MANUAL_REVIEW_LABEL,
+  RESULTS_CLOSE_LABEL,
   SCHEDULE_CONSULTATION_LABEL,
+  UNSUPPORTED_BODY,
+  type ResultsAuditState,
   type ResultsPillarView,
   type ResultsRecommendationInput,
   type ResultsView,
@@ -27,20 +37,23 @@ function GradeLetter({
   letter,
   color,
   className,
+  unassessed = false,
 }: {
   letter: string | null;
   color: string | null;
   className: string;
+  unassessed?: boolean;
 }) {
-  if (!letter) return null;
+  if (!letter && !unassessed) return null;
+  const display = letter ?? NOT_ASSESSED_GRADE;
   return (
     <p
       className={className}
-      data-letter={letter}
+      data-letter={letter ?? "unassessed"}
       data-grade-color={color ?? undefined}
       data-testid="pillar-grade"
     >
-      {letter}
+      {display}
     </p>
   );
 }
@@ -165,38 +178,54 @@ function HubHero({ view }: { view: ResultsView }) {
 function HubCards({
   token,
   pillars,
+  variant,
 }: {
   token: string;
   pillars: ResultsPillarView[];
+  variant: ResultsAuditState;
 }) {
   return (
     <div className="audit-results-cards" data-testid="results-hub-cards">
-      {pillars.map((pillar) => (
-        <Link
-          className="audit-results-card"
-          href={`/audit/results/${token}/${pillar.slug}`}
-          key={pillar.key}
-          data-pillar={pillar.key}
-        >
-          <GradeLetter
-            letter={pillar.letter}
-            color={pillar.color}
-            className="audit-results-card-grade"
-          />
-          <div className="audit-results-card-body">
-            <h2 className="audit-results-card-title">{pillar.name}</h2>
-            <p className="audit-results-card-desc">{pillar.summary}</p>
-          </div>
-          <span className="audit-results-chevron" aria-hidden="true">
-            <img src="/audit/chevron-forward.svg" alt="" width={40} height={40} />
-          </span>
-        </Link>
-      ))}
+      {pillars.map((pillar) => {
+        const unassessed = variant === "partial" && pillar.unassessed;
+        return (
+          <Link
+            className="audit-results-card"
+            href={`/audit/results/${token}/${pillar.slug}`}
+            key={pillar.key}
+            data-pillar={pillar.key}
+            data-unassessed={unassessed ? "true" : undefined}
+          >
+            <GradeLetter
+              letter={pillar.letter}
+              color={pillar.color}
+              className="audit-results-card-grade"
+              unassessed={unassessed}
+            />
+            <div className="audit-results-card-body">
+              <h2 className="audit-results-card-title">
+                {unassessed ? NOT_ASSESSED_CARD_TITLE : pillar.name}
+              </h2>
+              <p className="audit-results-card-desc">{pillar.summary}</p>
+            </div>
+            <span className="audit-results-chevron" aria-hidden="true">
+              <img src="/audit/chevron-forward.svg" alt="" width={40} height={40} />
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
 
-function DesktopColumn({ pillar }: { pillar: ResultsPillarView }) {
+function DesktopColumn({
+  pillar,
+  variant,
+}: {
+  pillar: ResultsPillarView;
+  variant: ResultsAuditState;
+}) {
+  const unassessed = variant === "partial" && pillar.unassessed;
   return (
     <div className="audit-results-column" data-pillar={pillar.key}>
       <div className="audit-results-desktop-card">
@@ -205,14 +234,66 @@ function DesktopColumn({ pillar }: { pillar: ResultsPillarView }) {
             letter={pillar.letter}
             color={pillar.color}
             className="audit-results-card-grade"
+            unassessed={unassessed}
           />
-          <h2 className="audit-results-card-title">{pillar.name}</h2>
+          <h2 className="audit-results-card-title">
+            {unassessed ? NOT_ASSESSED_CARD_TITLE : pillar.name}
+          </h2>
           <p className="audit-results-card-desc audit-results-desktop-card-desc">
             {pillar.summary}
           </p>
         </div>
       </div>
       <CheckRows pillar={pillar} />
+    </div>
+  );
+}
+
+function NotAssessedCard() {
+  return (
+    <div
+      className="audit-results-card audit-results-card-static"
+      data-testid="not-assessed-card"
+    >
+      <GradeLetter
+        letter={null}
+        color={null}
+        className="audit-results-card-grade"
+        unassessed
+      />
+      <div className="audit-results-card-body">
+        <h2 className="audit-results-card-title">{NOT_ASSESSED_CARD_TITLE}</h2>
+        <p className="audit-results-card-desc">{NOT_ASSESSED_CARD_SUBTITLE}</p>
+      </div>
+    </div>
+  );
+}
+
+function TerminalBody({ view }: { view: ResultsView }) {
+  if (view.auditState === "failed") {
+    return (
+      <div className="audit-results-terminal-copy" data-testid="terminal-body">
+        <p>
+          {FAILED_BODY_LEAD}
+          <a
+            className="audit-results-inline-link"
+            href={`https://${view.websiteHost}`}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {view.websiteHost}
+          </a>
+          {FAILED_BODY_TAIL}
+        </p>
+        <p className="audit-results-terminal-question">
+          {FAILED_MANUAL_REVIEW_QUESTION}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="audit-results-terminal-copy" data-testid="terminal-body">
+      <p>{UNSUPPORTED_BODY}</p>
     </div>
   );
 }
@@ -230,12 +311,26 @@ export function ResultsScreen({
   view: ResultsView;
   cta?: ReactNode;
 }) {
+  const variant = view.auditState;
+  const terminal = variant === "failed" || variant === "unsupported";
   const detail = pillarKey
     ? view.pillars.find((pillar) => pillar.key === pillarKey)
     : undefined;
+  const sheetLabel =
+    variant === "failed"
+      ? REQUEST_MANUAL_REVIEW_LABEL
+      : variant === "partial"
+        ? null
+        : SCHEDULE_CONSULTATION_LABEL;
+  const closeLabel = terminal ? RESULTS_CLOSE_LABEL : "Cancel";
+  const showVideo = variant === "complete" || variant === "needs_review";
 
   return (
-    <main className="audit-results" data-mode={mode}>
+    <main
+      className="audit-results"
+      data-mode={mode}
+      data-variant={variant}
+    >
       <nav className="audit-results-nav" aria-label="Primary">
         <Logo token={token} />
         {mode === "detail" ? (
@@ -247,19 +342,44 @@ export function ResultsScreen({
           </Link>
         ) : null}
         <Link className="audit-results-nav-btn audit-results-cancel" href="/">
-          Cancel
+          {closeLabel}
         </Link>
       </nav>
 
-      {mode === "hub" ? (
+      {mode === "hub" && !terminal ? (
         <div
           className="audit-results-content audit-results-hub"
           data-layout="hub"
           data-testid="results-hub"
         >
           <HubHero view={view} />
-          <HubCards token={token} pillars={view.pillars} />
-          <VideoThumb />
+          <HubCards token={token} pillars={view.pillars} variant={variant} />
+          {showVideo ? <VideoThumb /> : null}
+        </div>
+      ) : null}
+
+      {mode === "hub" && terminal ? (
+        <div
+          className="audit-results-content audit-results-hub"
+          data-layout="hub"
+          data-testid="results-terminal"
+        >
+          <HubHero view={view} />
+          <NotAssessedCard />
+          <TerminalBody view={view} />
+          {cta ? (
+            <div
+              className="audit-results-terminal-cta"
+              data-testid="terminal-cta"
+            >
+              {variant === "failed" ? (
+                <p className="audit-results-sheet-label">
+                  {REQUEST_MANUAL_REVIEW_LABEL}
+                </p>
+              ) : null}
+              <div className="audit-results-sheet-cta">{cta}</div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -275,9 +395,14 @@ export function ResultsScreen({
               letter={detail.letter}
               color={detail.color}
               className="audit-results-detail-grade"
+              unassessed={variant === "partial" && detail.unassessed}
             />
             <div className="audit-results-detail-copy">
-              <h1 className="audit-results-detail-title">{detail.name}</h1>
+              <h1 className="audit-results-detail-title">
+                {variant === "partial" && detail.unassessed
+                  ? NOT_ASSESSED_CARD_TITLE
+                  : detail.name}
+              </h1>
               <p className="audit-results-detail-summary">{detail.summary}</p>
             </div>
           </div>
@@ -289,27 +414,35 @@ export function ResultsScreen({
         </div>
       ) : null}
 
-      <div
-        className="audit-results-content audit-results-desktop"
-        data-layout="desktop"
-        data-testid="results-desktop"
-      >
-        <HubHero view={view} />
-        <div className="audit-results-columns">
-          {view.pillars.map((pillar) => (
-            <DesktopColumn pillar={pillar} key={pillar.key} />
-          ))}
+      {!terminal ? (
+        <div
+          className="audit-results-content audit-results-desktop"
+          data-layout="desktop"
+          data-testid="results-desktop"
+        >
+          <HubHero view={view} />
+          <div className="audit-results-columns">
+            {view.pillars.map((pillar) => (
+              <DesktopColumn
+                pillar={pillar}
+                variant={variant}
+                key={pillar.key}
+              />
+            ))}
+          </div>
+          {showVideo ? <VideoThumb /> : null}
+          <Recommendations
+            items={view.overallRecommendations}
+            emptyCopy={view.overallNoIssuesCopy}
+          />
         </div>
-        <VideoThumb />
-        <Recommendations
-          items={view.overallRecommendations}
-          emptyCopy={view.overallNoIssuesCopy}
-        />
-      </div>
+      ) : null}
 
       {mode === "hub" && cta ? (
         <div className="audit-results-sheet" data-testid="results-sheet">
-          <p className="audit-results-sheet-label">{SCHEDULE_CONSULTATION_LABEL}</p>
+          {sheetLabel ? (
+            <p className="audit-results-sheet-label">{sheetLabel}</p>
+          ) : null}
           <div className="audit-results-sheet-cta">{cta}</div>
         </div>
       ) : null}

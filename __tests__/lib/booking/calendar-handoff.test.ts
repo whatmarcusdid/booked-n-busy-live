@@ -126,6 +126,7 @@ describe("status-token and cookie resolvers", () => {
           ok: true,
           auditId: "audit-1",
           leadId: "lead-1",
+          auditState: "complete",
           view: {} as never,
         };
       },

@@ -186,6 +186,35 @@ describe("expired report resolution", () => {
     expect(access).toEqual({ outcome: "unavailable" });
   });
 
+  it("treats a cookie whose revision was purged as a fresh-scan case", async () => {
+    const { resolveCookieReportAccess } = jest.requireActual(
+      "@/lib/reports/access",
+    ) as typeof import("@/lib/reports/access");
+    const tokenHash = hashReportToken(TOKEN);
+    const access = await resolveCookieReportAccess(
+      tokenHash,
+      store(null),
+      afterExpiry,
+    );
+    expect(access).toEqual({
+      outcome: "expired",
+      tokenHash,
+      retained: false,
+    });
+  });
+
+  it("still hides a revoked report behind unavailable for cookie viewers", async () => {
+    const { resolveCookieReportAccess } = jest.requireActual(
+      "@/lib/reports/access",
+    ) as typeof import("@/lib/reports/access");
+    const access = await resolveCookieReportAccess(
+      hashReportToken(TOKEN),
+      store(row({ publication_status: "revoked" })),
+      afterExpiry,
+    );
+    expect(access).toEqual({ outcome: "unavailable" });
+  });
+
   it("hides revoked and unpublished reports behind the generic answer", async () => {
     for (const status of ["revoked", "review_required", "draft", "approved"]) {
       const access = await resolveReportAccess(
@@ -276,6 +305,26 @@ describe("re-request branches on retention, not on link age", () => {
     expect(outcome.action).toBe("rescan");
   });
 
+  it("rescans when the revision was purged, not merely expired", async () => {
+    const outcome = await resolveReRequest(
+      { email: EMAIL, tokenHash: "purged-hash" },
+      {
+        async findByReportTokenHash() {
+          return null;
+        },
+        async findLatestByEmailHash() {
+          return { ...base, reportRevisionId: null };
+        },
+      },
+      new Date(Date.parse(PUBLISHED_AT) + 1000),
+    );
+    expect(outcome).toEqual({
+      action: "rescan",
+      websiteUrl: "https://acmeplumbing.com",
+      leadId: "lead-1",
+    });
+  });
+
   it("refuses an email that does not own the report", async () => {
     const outcome = await resolveReRequest(
       { email: "stranger@example.com", tokenHash: "hash" },
@@ -306,6 +355,12 @@ describe("no raw token survives the exchange", () => {
       expect(source).not.toContain("reportToken");
       expect(source).not.toMatch(/params/);
     }
+  });
+
+  it("routes cookie-bound missing revisions onto the fresh-scan path", () => {
+    const source = readFileSync("app/report/page.tsx", "utf8");
+    expect(source).toContain("resolveCookieReportAccess");
+    expect(source).toContain("ExpiredReportRequest");
   });
 
   it("the expired flow asks only for an email", () => {

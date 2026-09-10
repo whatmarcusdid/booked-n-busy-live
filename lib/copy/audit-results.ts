@@ -38,12 +38,56 @@ const BAND_TO_LETTER: Record<ScoreBandKey, LetterGrade> = {
 export const RESULTS_DESKTOP_MIN_WIDTH_PX = 1024;
 export const RESULTS_TABLET_MIN_WIDTH_PX = 768;
 
-export const SELECT_A_DAY_LABEL = "Select A Day";
 export const SCHEDULE_CONSULTATION_LABEL = "Schedule consultation";
 export const HOW_YOU_EARNED_HEADING = "How you earned this grade";
 export const RECOMMENDED_IMPROVEMENTS_HEADING = "Recommended improvements";
 export const OVERALL_NO_ISSUES_COPY =
   "Great work! No critical issues found. Your site meets all current audit standards.";
+
+/** Partial results hub (Figma 25:8107). Replaces the Complete first-name headline. */
+export const PARTIAL_HEADLINE = "We completed most of your website review";
+export const NOT_ASSESSED_GRADE = "\u2013";
+export const NOT_ASSESSED_CARD_TITLE = "Not assessed";
+export const NOT_ASSESSED_PILLAR_SUBTITLE =
+  "We couldn\u2019t reliably test this part of your website. It has not been scored as a failure.";
+export const NOT_ASSESSED_CARD_SUBTITLE = "No grade was assigned.";
+
+/** Failed results (Figma 25:8154). No retry — manual review only. */
+export const FAILED_HEADLINE = "We couldn\u2019t complete your website review";
+export const FAILED_BODY_LEAD = "We couldn\u2019t access enough of ";
+export const FAILED_BODY_TAIL =
+  " to create a reliable scorecard. The website may have been temporarily unavailable or may limit automated reviews.";
+export const FAILED_MANUAL_REVIEW_QUESTION =
+  "Would you like us to review it manually?";
+export const REQUEST_MANUAL_REVIEW_LABEL = "Request a manual review";
+export const SEND_REQUEST_LABEL = "Send request";
+export const MANUAL_REVIEW_SENT_COPY = "Request sent \u2014 we\u2019ll be in touch";
+export const RESULTS_CLOSE_LABEL = "Close";
+
+/**
+ * Unsupported results. Drafted for this pass — no Figma frame. Needs a
+ * product/copy review before real traffic.
+ */
+export const UNSUPPORTED_HEADLINE = "We\u2019re not able to review this website";
+export const UNSUPPORTED_BODY =
+  "This type of website isn\u2019t one the scanner can review. It may require a login, block automated visitors, or fall outside what can be safely scanned.";
+
+export type ResultsAuditState =
+  | "complete"
+  | "partial"
+  | "needs_review"
+  | "failed"
+  | "unsupported";
+
+export function isResultsAuditState(value: string): value is ResultsAuditState {
+  return (
+    value === "complete" ||
+    value === "partial" ||
+    value === "needs_review" ||
+    value === "failed" ||
+    value === "unsupported"
+  );
+}
 
 export interface ResultsCheckDefinition {
   key: string;
@@ -281,6 +325,7 @@ export interface ResultsPillarView {
   color: GradeColor | null;
   score: number | null;
   summary: string;
+  unassessed: boolean;
   checks: ResultsCheckView[];
   passedCount: number;
   totalCount: number;
@@ -290,6 +335,7 @@ export interface ResultsPillarView {
 }
 
 export interface ResultsView {
+  auditState: ResultsAuditState;
   firstName: string | null;
   websiteHost: string;
   headline: string;
@@ -298,12 +344,23 @@ export interface ResultsView {
   overallNoIssuesCopy: string;
 }
 
+export function resultsHeadlineForState(
+  auditState: ResultsAuditState,
+  firstName: string | null,
+): string {
+  if (auditState === "partial") return PARTIAL_HEADLINE;
+  if (auditState === "failed") return FAILED_HEADLINE;
+  if (auditState === "unsupported") return UNSUPPORTED_HEADLINE;
+  return resultsHeadline(firstName);
+}
+
 export function buildResultsView(input: {
   firstName: string | null;
   websiteUrl: string;
   pillars: Array<{ key: string; name: string; score: number | null }>;
   criteria: ResultsCheckInput[];
   recommendations: ResultsRecommendationInput[];
+  auditState?: ResultsAuditState;
 }): ResultsView {
   const criteriaByKey = new Map(input.criteria.map((row) => [row.key, row]));
   const recsByPillar = new Map<string, ResultsRecommendationInput[]>();
@@ -328,6 +385,14 @@ export function buildResultsView(input: {
       };
     });
     const passedCount = checks.filter((check) => check.outcome === "pass").length;
+    const unassessed = checks.every((check) => check.outcome === "not_assessed");
+    const auditState = input.auditState ?? "complete";
+    const summary =
+      auditState === "partial" && unassessed
+        ? NOT_ASSESSED_PILLAR_SUBTITLE
+        : letter
+          ? definition.summaries[letter]
+          : "";
     return {
       key: definition.key,
       slug: definition.slug,
@@ -335,7 +400,8 @@ export function buildResultsView(input: {
       letter,
       color: letter ? gradeColor(letter) : null,
       score: stored?.score ?? null,
-      summary: letter ? definition.summaries[letter] : "",
+      summary,
+      unassessed,
       checks,
       passedCount,
       totalCount: definition.checks.length,
@@ -349,10 +415,12 @@ export function buildResultsView(input: {
     };
   });
 
+  const auditState = input.auditState ?? "complete";
   return {
+    auditState,
     firstName: input.firstName,
     websiteHost: displayWebsiteHost(input.websiteUrl),
-    headline: resultsHeadline(input.firstName),
+    headline: resultsHeadlineForState(auditState, input.firstName),
     pillars,
     overallRecommendations: [...input.recommendations].sort(
       (a, b) => a.sortOrder - b.sortOrder,

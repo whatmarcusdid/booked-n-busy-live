@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { BOOK_FINDINGS_CALL_LABEL } from "@/app/book-findings-call";
 import { CRITERIA_BY_PILLAR } from "@/lib/audit-workflow/types";
 import {
   buildResultsView,
@@ -360,6 +361,19 @@ describe("data path and routes", () => {
     const page = readFileSync(PAGE, "utf8");
     expect(page).toContain("loadAuditResults");
     expect(page).toContain("<BookFindingsCall");
+  });
+
+  it("renders Book your findings call as the Complete CTA, not Select A Day", () => {
+    const page = readFileSync(PAGE, "utf8");
+    const cta = readFileSync(
+      join(process.cwd(), "app/book-findings-call.tsx"),
+      "utf8",
+    );
+    expect(page).toContain("<BookFindingsCall");
+    expect(page).not.toContain("label=");
+    expect(page).not.toContain("Select A Day");
+    expect(cta).toContain("label = BOOK_FINDINGS_CALL_LABEL");
+    expect(BOOK_FINDINGS_CALL_LABEL).toBe("Book your findings call");
   });
 
   it("exposes the three pillar detail slugs", () => {

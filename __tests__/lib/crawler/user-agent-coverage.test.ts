@@ -109,25 +109,17 @@ describe("every Browserless endpoint identifies the scanner", () => {
 
 describe("the direct robots.txt fetch identifies the scanner", () => {
   it("sends the approved User-Agent header", async () => {
-    const previous = process.env.JEST_WORKER_ID;
-    delete process.env.JEST_WORKER_ID;
-
     const seen: Array<Record<string, string>> = [];
-    const original = global.fetch;
-    global.fetch = (async (_url: unknown, init?: RequestInit) => {
+    const fetchImpl = async (_url: string, init?: RequestInit) => {
       seen.push((init?.headers ?? {}) as Record<string, string>);
       return new Response("User-agent: *\nAllow: /", { status: 200 });
-    }) as typeof fetch;
+    };
 
-    try {
-      await fetchRobotsOverHttp({
-        url: "https://example.com/robots.txt",
-        timeoutMs: 5000,
-      });
-    } finally {
-      global.fetch = original;
-      if (previous !== undefined) process.env.JEST_WORKER_ID = previous;
-    }
+    await fetchRobotsOverHttp({
+      url: "https://example.com/robots.txt",
+      timeoutMs: 5000,
+      fetchImpl,
+    });
 
     expect(seen[0]["User-Agent"]).toBe(CRAWLER_USER_AGENT);
   });

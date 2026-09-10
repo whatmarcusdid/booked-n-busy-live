@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { BookFindingsCall } from "@/app/book-findings-call";
-import { SELECT_A_DAY_LABEL } from "@/lib/copy/audit-results";
 import { loadAuditResults } from "@/lib/services/audit-results-service";
+import { RequestManualReview } from "./request-manual-review";
 import { ResultsScreen } from "./results-screen";
 import "./audit-results.css";
 
@@ -27,14 +27,13 @@ export default async function AuditResultsPage({
 
   if (!loaded.ok) notFound();
 
-  return (
-    <ResultsScreen
-      token={token}
-      mode="hub"
-      view={loaded.view}
-      cta={
-        <BookFindingsCall statusToken={token} label={SELECT_A_DAY_LABEL} />
-      }
-    />
-  );
+  const { view } = loaded;
+  const cta =
+    view.auditState === "failed" ? (
+      <RequestManualReview token={token} />
+    ) : view.auditState === "unsupported" ? undefined : (
+      <BookFindingsCall statusToken={token} />
+    );
+
+  return <ResultsScreen token={token} mode="hub" view={view} cta={cta} />;
 }

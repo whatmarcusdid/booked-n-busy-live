@@ -100,6 +100,32 @@ describe("createAudit workflow trigger", () => {
       expect.objectContaining({
         p_trade: null,
         p_service_area: null,
+        p_primary_trade: null,
+        p_secondary_trades: null,
+        p_business_model: null,
+        p_audit_focus: null,
+      }),
+    );
+  });
+
+  it("passes supplied service-mix fields through to the RPC", async () => {
+    await createAudit(
+      {
+        ...payload,
+        primaryTrade: "Plumbing",
+        secondaryTrades: ["HVAC"],
+        businessModel: "dual_trade",
+        auditFocus: "plumbing",
+      },
+      "https://example.com",
+    );
+    expect(rpc).toHaveBeenCalledWith(
+      "create_audit_with_lead",
+      expect.objectContaining({
+        p_primary_trade: "Plumbing",
+        p_secondary_trades: ["HVAC"],
+        p_business_model: "dual_trade",
+        p_audit_focus: "plumbing",
       }),
     );
   });

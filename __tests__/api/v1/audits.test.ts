@@ -272,6 +272,31 @@ describe("POST /api/v1/audits", () => {
     const submitted = mockCreateAudit.mock.calls[0][0];
     expect(submitted.trade).toBeUndefined();
     expect(submitted.serviceArea).toBeUndefined();
+    expect(submitted.primaryTrade).toBeUndefined();
+    expect(submitted.secondaryTrades).toBeUndefined();
+    expect(submitted.businessModel).toBeUndefined();
+    expect(submitted.auditFocus).toBeUndefined();
+  });
+
+  it("rejects an invalid businessModel before createAudit is called", async () => {
+    const request = new NextRequest("http://localhost:3000/api/v1/audits", {
+      method: "POST",
+      body: JSON.stringify({
+        websiteUrl: "example.com",
+        businessName: "Test Business",
+        firstName: "John",
+        email: "john@example.com",
+        consent: { reportDelivery: true },
+        businessModel: "franchise",
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("Validation failed");
+    expect(mockCreateAudit).not.toHaveBeenCalled();
   });
 
   it("should not expose sensitive data in error responses", async () => {

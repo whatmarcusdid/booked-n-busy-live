@@ -9,8 +9,13 @@ import { LoadingScreen } from "./loading-screen";
 
 const POLL_INTERVAL_MS = 3000;
 
-/** Terminal states that produced a report the customer can be shown. */
-const REPORTING_STATES = new Set(["complete", "partial"]);
+/** Failed/unsupported land on the same results route with their own screens. */
+const TERMINAL_RESULTS_STATES = new Set([
+  "complete",
+  "partial",
+  "failed",
+  "unsupported",
+]);
 
 export function StatusPoller({
   token,
@@ -112,7 +117,7 @@ export function StatusPoller({
     <div className="audit-loading-content">
       <section className="audit-loading-hero">
         <h1 className="audit-loading-headline">{data.progress.currentStep}</h1>
-        {REPORTING_STATES.has(data.status) ? (
+        {TERMINAL_RESULTS_STATES.has(data.status) ? (
           <p className="audit-loading-target">
             <a
               className="audit-loading-cancel"

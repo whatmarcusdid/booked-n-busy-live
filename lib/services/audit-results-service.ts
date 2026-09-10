@@ -3,6 +3,8 @@ import type { CheckOutcome } from "@/lib/audit-workflow/rubric/model";
 import {
   buildResultsView,
   isKnownCheckOutcome,
+  isResultsAuditState,
+  type ResultsAuditState,
   type ResultsCheckInput,
   type ResultsRecommendationInput,
   type ResultsView,
@@ -14,6 +16,7 @@ export type LoadedAuditResults = {
   view: ResultsView;
   auditId: string;
   leadId: string | null;
+  auditState: ResultsAuditState;
 };
 
 export type LoadAuditResultsResult =
@@ -57,12 +60,13 @@ export async function loadAuditResultsByAuditId(
     const [auditResult, pillarsResult] = await Promise.all([
       supabase
         .from("audits")
-        .select("id, website_url, lead_id, leads ( first_name )")
+        .select("id, website_url, lead_id, current_state, leads ( first_name )")
         .eq("id", auditId)
         .maybeSingle<{
           id: string;
           website_url: string;
           lead_id: string;
+          current_state: string;
           leads: { first_name: string } | { first_name: string }[];
         }>(),
       supabase
@@ -89,6 +93,7 @@ export async function loadAuditResultsByAuditId(
       })),
       lead?.first_name ?? null,
       auditResult.data.lead_id,
+      auditResult.data.current_state,
     );
     return { ok: true, ...loaded };
   } catch (error) {
@@ -97,12 +102,17 @@ export async function loadAuditResultsByAuditId(
   }
 }
 
+function auditStateFromRow(currentState: string): ResultsAuditState {
+  return isResultsAuditState(currentState) ? currentState : "complete";
+}
+
 async function loadViewForAudit(
   auditId: string,
   websiteUrl: string,
   pillars: Array<{ key: string; name: string; score: number | null }>,
   firstName: string | null,
   leadId: string | null,
+  currentState: string,
 ): Promise<LoadedAuditResults> {
   const supabase = createAdminClient();
   const [criteriaResult, revisionResult] = await Promise.all([
@@ -155,15 +165,18 @@ async function loadViewForAudit(
     sortOrder: row.sort_order ?? 0,
   }));
 
+  const auditState = auditStateFromRow(currentState);
   return {
     auditId,
     leadId,
+    auditState,
     view: buildResultsView({
       firstName,
       websiteUrl,
       pillars,
       criteria,
       recommendations,
+      auditState,
     }),
   };
 }
@@ -190,7 +203,9 @@ export async function loadAuditResults(
     if ("error" in status) {
       return { ok: false, code: status.code === "NOT_FOUND" ? "NOT_FOUND" : "SERVER_ERROR" };
     }
-    if (!status.report) {
+    const terminalWithoutReport =
+      status.status === "failed" || status.status === "unsupported";
+    if (!status.report && !terminalWithoutReport) {
       return { ok: false, code: "NOT_FOUND" };
     }
 

@@ -64,7 +64,9 @@ describe("POST /report/booking-sessions", () => {
       ok: true,
       auditId: "audit-report-1",
       leadId: "lead-report-1",
+      auditState: "complete",
       view: {
+        auditState: "complete",
         firstName: "Alex",
         websiteHost: "bookednbusy.app",
         headline: "",

@@ -134,6 +134,11 @@ main.audit-results {
   display: none;
 }
 
+.audit-results[data-variant="failed"] .audit-results-cancel,
+.audit-results[data-variant="unsupported"] .audit-results-cancel {
+  display: flex;
+}
+
 /* Content -------------------------------------------------------------- */
 
 .audit-results-content {
@@ -193,6 +198,10 @@ main.audit-results {
   color: inherit;
 }
 
+.audit-results-card-static {
+  text-decoration: none;
+}
+
 .audit-results-card-grade {
   flex-shrink: 0;
   width: 58px;
@@ -217,6 +226,11 @@ main.audit-results {
 .audit-results-card-grade[data-letter="F"],
 .audit-results-detail-grade[data-letter="F"] {
   color: var(--ar-grade-f);
+}
+
+.audit-results-card-grade[data-letter="unassessed"],
+.audit-results-detail-grade[data-letter="unassessed"] {
+  color: #e5e5e5;
 }
 
 .audit-results-card-body {
@@ -414,6 +428,50 @@ main.audit-results {
   --md-filled-button-label-text-weight: 600;
 }
 
+.audit-results-terminal-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--ar-text-subtle);
+}
+
+.audit-results-inline-link {
+  color: var(--ar-action-primary);
+  text-decoration: underline;
+}
+
+.audit-results-terminal-question {
+  font-weight: 700;
+  color: #171717;
+}
+
+.audit-results-sent {
+  flex: 1 1 0;
+  min-width: 0;
+  font-family: var(--font-ratch), sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #000000;
+}
+
+.audit-results-terminal-cta {
+  display: none;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .audit-results[data-variant="failed"] .audit-results-terminal-cta {
+    display: flex;
+  }
+}
+
 .audit-results [role="alert"] {
   font-size: 16px;
   color: #b42318;
@@ -496,6 +554,16 @@ main.audit-results {
 
   .audit-results-cancel {
     display: flex;
+  }
+
+  .audit-results[data-variant="failed"] .audit-results-hub,
+  .audit-results[data-variant="unsupported"] .audit-results-hub {
+    display: flex;
+  }
+
+  .audit-results[data-variant="failed"] .audit-results-desktop,
+  .audit-results[data-variant="unsupported"] .audit-results-desktop {
+    display: none;
   }
 
   .audit-results-columns {
