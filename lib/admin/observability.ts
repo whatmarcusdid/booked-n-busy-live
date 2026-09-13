@@ -1,16 +1,22 @@
 /**
- * M8 observability, first pass (PRD 18.16): state distribution, completion
- * times, and needs-review rate. Cost/kill-switch reporting and provider-error
- * rates are deferred — this module only classifies an already-finished audit
- * into a timing bucket.
+ * M8 observability (PRD 18.16): state distribution, completion times,
+ * needs-review rate, and cost / kill-switch totals. Provider-error rates
+ * remain out of scope — those events are not stored with a provider key.
  *
  * Read-only. No inserts, updates, or new tables.
  *
  * `admin_reviews` is not a source here: it records the human decision
  * (approve / hold / override), not which priority-review trigger flagged
  * the audit. Flag causes come from decision #12's existing evaluator.
+ *
+ * Cost uses the denormalized `audits.cost_usd` / `kill_switch_reason`
+ * columns written at terminal (and on kill), not a per-row ledger aggregate.
  */
-import { AUDIT_WALL_CLOCK_CEILING_MS } from "../audit-workflow/budget";
+import {
+  AUDIT_WALL_CLOCK_CEILING_MS,
+  COST_CEILING_REASON_CODE,
+  WALL_CLOCK_CEILING_REASON_CODE,
+} from "../audit-workflow/budget";
 import { WORKFLOW_TERMINAL_STATES } from "../audit-workflow/types";
 import { SLOW_AUDIT_THRESHOLD_MS } from "../copy/timing";
 import { createAdminClient } from "../supabase/admin";
@@ -59,10 +65,109 @@ export const COMPLETION_BUCKET_LABELS: Record<CompletionBucket, string> = {
   kill_switch_15m: "Terminated by the 15-minute kill switch",
 };
 
+export const KILL_SWITCH_REASONS = [
+  COST_CEILING_REASON_CODE,
+  WALL_CLOCK_CEILING_REASON_CODE,
+] as const;
+
+export type KillSwitchReason = (typeof KILL_SWITCH_REASONS)[number];
+
+export const KILL_SWITCH_REASON_LABELS: Record<KillSwitchReason, string> = {
+  COST_CEILING_EXCEEDED: "Cost ceiling exceeded",
+  WALL_CLOCK_CEILING_EXCEEDED: "Wall-clock ceiling exceeded",
+};
+
 const TERMINAL = new Set<string>(WORKFLOW_TERMINAL_STATES);
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const SCAN_LIMIT = 5000;
 const ID_CHUNK = 200;
+const IN_FLIGHT_STATE = "in_flight";
+
+function numericCost(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value)) return 0;
+  return value;
+}
+
+function medianOf(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return sorted[mid];
+}
+
+export function assembleCostKillSwitchPanel(
+  audits: ObservabilityAudit[],
+): CostKillSwitchPanel {
+  const costs = audits.map((audit) => numericCost(audit.costUsd));
+  const totalSpendUsd = costs.reduce((sum, value) => sum + value, 0);
+  const total = audits.length;
+
+  const spendByState = Object.fromEntries(
+    DISTRIBUTION_STATES.map((state) => [state, { spendUsd: 0, auditCount: 0 }]),
+  ) as Record<DistributionState, { spendUsd: number; auditCount: number }>;
+  let inFlightSpend = 0;
+  let inFlightCount = 0;
+
+  for (const audit of audits) {
+    const spend = numericCost(audit.costUsd);
+    if ((DISTRIBUTION_STATES as readonly string[]).includes(audit.currentState)) {
+      const bucket = spendByState[audit.currentState as DistributionState];
+      bucket.spendUsd += spend;
+      bucket.auditCount += 1;
+    } else {
+      inFlightSpend += spend;
+      inFlightCount += 1;
+    }
+  }
+
+  const killCounts = new Map<string, number>();
+  for (const reason of KILL_SWITCH_REASONS) {
+    killCounts.set(reason, 0);
+  }
+  for (const audit of audits) {
+    const reason = audit.killSwitchReason?.trim();
+    if (!reason) continue;
+    killCounts.set(reason, (killCounts.get(reason) ?? 0) + 1);
+  }
+
+  const knownReasons = new Set<string>(KILL_SWITCH_REASONS);
+  const extraReasons = [...killCounts.keys()]
+    .filter((reason) => !knownReasons.has(reason))
+    .sort((a, b) => a.localeCompare(b));
+
+  return {
+    totalSpendUsd,
+    averageUsd: total === 0 ? 0 : totalSpendUsd / total,
+    medianUsd: medianOf(costs),
+    byState: [
+      ...DISTRIBUTION_STATES.map((state) => ({
+        state,
+        spendUsd: spendByState[state].spendUsd,
+        auditCount: spendByState[state].auditCount,
+      })),
+      {
+        state: IN_FLIGHT_STATE,
+        spendUsd: inFlightSpend,
+        auditCount: inFlightCount,
+      },
+    ],
+    killSwitches: [
+      ...KILL_SWITCH_REASONS.map((reason) => ({
+        reason,
+        label: KILL_SWITCH_REASON_LABELS[reason],
+        count: killCounts.get(reason) ?? 0,
+      })),
+      ...extraReasons.map((reason) => ({
+        reason,
+        label: reason,
+        count: killCounts.get(reason) ?? 0,
+      })),
+    ],
+  };
+}
 
 export function parseDashboardRange(
   raw: string | null | undefined,
@@ -123,6 +228,26 @@ export interface PriorityTriggerRow {
   count: number;
 }
 
+export interface CostByStateRow {
+  state: string;
+  spendUsd: number;
+  auditCount: number;
+}
+
+export interface KillSwitchReasonRow {
+  reason: string;
+  label: string;
+  count: number;
+}
+
+export interface CostKillSwitchPanel {
+  totalSpendUsd: number;
+  averageUsd: number;
+  medianUsd: number;
+  byState: CostByStateRow[];
+  killSwitches: KillSwitchReasonRow[];
+}
+
 export interface ObservabilityDashboard {
   range: DashboardRange;
   rangeStartedAt: string | null;
@@ -137,12 +262,15 @@ export interface ObservabilityDashboard {
     rate: number;
     triggers: PriorityTriggerRow[];
   };
+  cost: CostKillSwitchPanel;
 }
 
 export interface ObservabilityAudit {
   id: string;
   currentState: string;
   createdAt: string;
+  costUsd?: number | null;
+  killSwitchReason?: string | null;
 }
 
 export interface ObservabilityTransition {
@@ -244,6 +372,7 @@ export function assembleObservabilityDashboard(input: {
           count: triggerCounts[reason],
         })),
     },
+    cost: assembleCostKillSwitchPanel(input.audits),
   };
 }
 
@@ -251,6 +380,11 @@ export function formatDashboardPercent(rate: number): string {
   if (!Number.isFinite(rate) || rate <= 0) return "0%";
   const pct = rate * 100;
   return Number.isInteger(pct) ? `${pct}%` : `${pct.toFixed(1)}%`;
+}
+
+export function formatDashboardUsd(amount: number): string {
+  if (!Number.isFinite(amount) || amount === 0) return "$0.0000";
+  return `$${amount.toFixed(4)}`;
 }
 
 export async function loadObservabilityDashboard(
@@ -262,7 +396,7 @@ export async function loadObservabilityDashboard(
 
   let query = supabase
     .from("audits")
-    .select("id, current_state, created_at")
+    .select("id, current_state, created_at, cost_usd, kill_switch_reason")
     .order("created_at", { ascending: false })
     .limit(SCAN_LIMIT);
   if (start) {
@@ -278,6 +412,11 @@ export async function loadObservabilityDashboard(
     id: String(row.id),
     currentState: String(row.current_state),
     createdAt: String(row.created_at),
+    costUsd: row.cost_usd == null ? null : Number(row.cost_usd),
+    killSwitchReason:
+      row.kill_switch_reason == null || row.kill_switch_reason === ""
+        ? null
+        : String(row.kill_switch_reason),
   }));
 
   const ids = audits.map((audit) => audit.id);

@@ -17,8 +17,15 @@ function audit(
   id: string,
   state: string,
   createdAt = "2026-09-10T11:00:00.000Z",
+  extras: { costUsd?: number | null; killSwitchReason?: string | null } = {},
 ): ObservabilityAudit {
-  return { id, currentState: state, createdAt };
+  return {
+    id,
+    currentState: state,
+    createdAt,
+    costUsd: extras.costUsd,
+    killSwitchReason: extras.killSwitchReason,
+  };
 }
 
 function check(
@@ -248,5 +255,110 @@ describe("observability is read-only", () => {
     expect(source).not.toMatch(/\.insert\(|\.update\(|\.delete\(/);
     expect(source).not.toContain("CREATE TABLE");
     expect(source).not.toContain("crons");
+    expect(source).not.toContain('.from("audit_cost_entries")');
+  });
+});
+
+describe("cost and kill-switch panel", () => {
+  it("renders zeros when the window has no audits", () => {
+    const dashboard = assembleObservabilityDashboard({
+      range: "all",
+      now: NOW,
+      audits: [],
+      transitions: [],
+      criteriaByAudit: {},
+    });
+
+    expect(dashboard.cost).toEqual({
+      totalSpendUsd: 0,
+      averageUsd: 0,
+      medianUsd: 0,
+      byState: [
+        { state: "complete", spendUsd: 0, auditCount: 0 },
+        { state: "partial", spendUsd: 0, auditCount: 0 },
+        { state: "needs_review", spendUsd: 0, auditCount: 0 },
+        { state: "unsupported", spendUsd: 0, auditCount: 0 },
+        { state: "failed", spendUsd: 0, auditCount: 0 },
+        { state: "in_flight", spendUsd: 0, auditCount: 0 },
+      ],
+      killSwitches: [
+        {
+          reason: "COST_CEILING_EXCEEDED",
+          label: "Cost ceiling exceeded",
+          count: 0,
+        },
+        {
+          reason: "WALL_CLOCK_CEILING_EXCEEDED",
+          label: "Wall-clock ceiling exceeded",
+          count: 0,
+        },
+      ],
+    });
+  });
+
+  it("totals average and median cost and breaks spend out by final state", () => {
+    const dashboard = assembleObservabilityDashboard({
+      range: "all",
+      now: NOW,
+      audits: [
+        audit("a", "complete", undefined, { costUsd: 0.04 }),
+        audit("b", "complete", undefined, { costUsd: 0.06 }),
+        audit("c", "failed", undefined, { costUsd: 0.10 }),
+        audit("d", "unsupported", undefined, { costUsd: 0.02 }),
+        audit("e", "scoring", undefined, { costUsd: 0.01 }),
+        audit("f", "needs_review", undefined, { costUsd: null }),
+      ],
+      transitions: [],
+      criteriaByAudit: {},
+    });
+
+    expect(dashboard.cost.totalSpendUsd).toBeCloseTo(0.23);
+    expect(dashboard.cost.averageUsd).toBeCloseTo(0.23 / 6);
+    expect(dashboard.cost.medianUsd).toBeCloseTo(0.03);
+    expect(dashboard.cost.byState).toEqual([
+      { state: "complete", spendUsd: 0.1, auditCount: 2 },
+      { state: "partial", spendUsd: 0, auditCount: 0 },
+      { state: "needs_review", spendUsd: 0, auditCount: 1 },
+      { state: "unsupported", spendUsd: 0.02, auditCount: 1 },
+      { state: "failed", spendUsd: 0.1, auditCount: 1 },
+      { state: "in_flight", spendUsd: 0.01, auditCount: 1 },
+    ]);
+  });
+
+  it("counts kill-switch triggers by persisted reason", () => {
+    const dashboard = assembleObservabilityDashboard({
+      range: "all",
+      now: NOW,
+      audits: [
+        audit("a", "failed", undefined, {
+          costUsd: 1,
+          killSwitchReason: "COST_CEILING_EXCEEDED",
+        }),
+        audit("b", "failed", undefined, {
+          costUsd: 1,
+          killSwitchReason: "COST_CEILING_EXCEEDED",
+        }),
+        audit("c", "failed", undefined, {
+          costUsd: 0.5,
+          killSwitchReason: "WALL_CLOCK_CEILING_EXCEEDED",
+        }),
+        audit("d", "complete", undefined, { costUsd: 0.2 }),
+      ],
+      transitions: [],
+      criteriaByAudit: {},
+    });
+
+    expect(dashboard.cost.killSwitches).toEqual([
+      {
+        reason: "COST_CEILING_EXCEEDED",
+        label: "Cost ceiling exceeded",
+        count: 2,
+      },
+      {
+        reason: "WALL_CLOCK_CEILING_EXCEEDED",
+        label: "Wall-clock ceiling exceeded",
+        count: 1,
+      },
+    ]);
   });
 });

@@ -5,6 +5,7 @@ import {
   DASHBOARD_RANGE_LABELS,
   DASHBOARD_RANGES,
   formatDashboardPercent,
+  formatDashboardUsd,
   loadObservabilityDashboard,
   parseDashboardRange,
 } from "@/lib/admin/observability";
@@ -158,6 +159,80 @@ export default async function AdminDashboardPage({
             </thead>
             <tbody>
               {dashboard.needsReview.triggers.map((row) => (
+                <tr key={row.reason}>
+                  <td>{row.label}</td>
+                  <td>{row.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="admin-section" aria-label="Cost and kill switch">
+          <h2>Cost and kill switch</h2>
+          <p>
+            Spend from <code>audits.cost_usd</code> among{" "}
+            {dashboard.totalSubmitted} submitted audit
+            {dashboard.totalSubmitted === 1 ? "" : "s"} in this range. Kill
+            counts from <code>audits.kill_switch_reason</code>.
+          </p>
+          <div className="admin-health" aria-label="Cost totals">
+            <div className="admin-stat">
+              <div className="admin-stat-label">Total spend</div>
+              <div className="admin-stat-value">
+                {formatDashboardUsd(dashboard.cost.totalSpendUsd)}
+              </div>
+              <div className="admin-stat-note">USD in this range</div>
+            </div>
+            <div className="admin-stat">
+              <div className="admin-stat-label">Average per audit</div>
+              <div className="admin-stat-value">
+                {formatDashboardUsd(dashboard.cost.averageUsd)}
+              </div>
+              <div className="admin-stat-note">Null cost counted as $0</div>
+            </div>
+            <div className="admin-stat">
+              <div className="admin-stat-label">Median per audit</div>
+              <div className="admin-stat-value">
+                {formatDashboardUsd(dashboard.cost.medianUsd)}
+              </div>
+              <div className="admin-stat-note">Null cost counted as $0</div>
+            </div>
+          </div>
+          <h3>Spend by state</h3>
+          <p>
+            Final <code>current_state</code>. In-flight rows are audits that
+            have not reached a terminal outcome.
+          </p>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th scope="col">State</th>
+                <th scope="col">Spend</th>
+                <th scope="col">Audits</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dashboard.cost.byState.map((row) => (
+                <tr key={row.state}>
+                  <td>{row.state}</td>
+                  <td>{formatDashboardUsd(row.spendUsd)}</td>
+                  <td>{row.auditCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <h3>Kill-switch triggers</h3>
+          <p>Counted by persisted reason code. Both known reasons always list.</p>
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th scope="col">Reason</th>
+                <th scope="col">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dashboard.cost.killSwitches.map((row) => (
                 <tr key={row.reason}>
                   <td>{row.label}</td>
                   <td>{row.count}</td>
