@@ -105,7 +105,7 @@ export function StatusPoller({
     captureMilestone: data.progress?.captureMilestone,
   });
 
-  if (view) return <LoadingScreen view={view} data={data} />;
+  if (view) return <LoadingScreen view={view} data={data} token={token} />;
 
   /*
    * States this screen does not own. A finished audit routes straight to

@@ -352,27 +352,49 @@ main.audit-loading {
   height: 40px;
 }
 
-/* Facts: two columns on desktop, stacked below. */
-.audit-loading-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+/* Service-mix chips, Figma 5:2587 default / 132:1542 selected. */
+.audit-loading-service-mix-question {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--al-text-subtle);
+}
+
+.audit-loading-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
   width: 100%;
 }
 
-.audit-loading-facts .audit-loading-card {
-  height: 100%;
+.audit-loading-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 12px 24px;
+  border: 2px solid var(--al-text-subtle);
+  border-radius: 9999px;
+  background: var(--al-surface-page);
+  color: var(--al-text-subtle);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-/*
- * The desktop frames show two facts; mobile and tablet show three. Rendering
- * all three and hiding the last on desktop keeps one component honest to all
- * three frames.
- */
-@media (min-width: 1024px) {
-  .audit-loading-fact:nth-child(3) {
-    display: none;
-  }
+.audit-loading-chip.is-selected {
+  border-color: var(--al-action-primary);
+  color: var(--al-action-primary);
+}
+
+.audit-loading-chip:focus-visible {
+  outline: 2px solid var(--al-action-primary);
+  outline-offset: 2px;
 }
 
 .audit-loading [role="alert"] {
@@ -390,11 +412,6 @@ main.audit-loading {
   .audit-loading-content {
     max-width: 500px;
   }
-
-  .audit-loading-facts {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-  }
 }
 
 @media (max-width: 767px) {
@@ -406,11 +423,6 @@ main.audit-loading {
 
   .audit-loading-content {
     max-width: none;
-  }
-
-  .audit-loading-facts {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
   }
 
   /* The nav's logo and Cancel button together exceed the narrowest phones. */

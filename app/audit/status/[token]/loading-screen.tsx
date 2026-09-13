@@ -1,12 +1,8 @@
 "use client";
 
-import {
-  DID_YOU_KNOW_FACTS,
-  DID_YOU_KNOW_HEADING,
-  type LoadingView,
-  type ProgressStageView,
-} from "@/lib/copy/audit-progress";
+import type { LoadingView, ProgressStageView } from "@/lib/copy/audit-progress";
 import type { AuditStatusResponse } from "@/lib/schemas/audit-status";
+import { TradeChips } from "./trade-chips";
 
 const HOURGLASS: Record<string, string> = {
   normal: "/audit/hourglass-normal.svg",
@@ -36,9 +32,11 @@ function StageRow({ stage }: { stage: ProgressStageView }) {
 export function LoadingScreen({
   view,
   data,
+  token,
 }: {
   view: LoadingView;
   data: AuditStatusResponse;
+  token: string;
 }) {
   const target = data.businessName || data.websiteUrl;
 
@@ -92,26 +90,7 @@ export function LoadingScreen({
         </section>
       ) : null}
 
-      <section className="audit-loading-section">
-        <h2 className="audit-loading-section-heading">{DID_YOU_KNOW_HEADING}</h2>
-        <div className="audit-loading-facts">
-          {DID_YOU_KNOW_FACTS.map((fact) => (
-            <div className="audit-loading-card audit-loading-fact" key={fact}>
-              <div className="audit-loading-card-body">
-                <span className="audit-loading-card-icon" aria-hidden="true">
-                  <img
-                    src="/audit/fact-icon.png"
-                    alt=""
-                    width={38}
-                    height={38}
-                  />
-                </span>
-                <p className="audit-loading-card-text">{fact}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <TradeChips token={token} />
     </div>
   );
 }

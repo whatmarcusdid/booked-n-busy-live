@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  DID_YOU_KNOW_FACTS,
   HEADLINES,
   PROGRESS_STAGES,
   resolveLoadingView,
@@ -305,19 +304,18 @@ describe("the 90-second transition changes only what is displayed", () => {
     expect(poller).not.toContain("performance.now");
   });
 
-  it("polls read-only, with no mutating request anywhere on the screen", () => {
+  it("polls read-only, with no mutating request anywhere on the poller", () => {
     const poller = stripComments(readFileSync(POLLER, "utf8"));
     const page = stripComments(readFileSync(PAGE, "utf8"));
 
-    // The screen's entire network surface: one GET of the status endpoint.
+    // Status polling stays a GET. The chip panel's POST lives in TradeChips,
+    // not in the poller, so the 90-second transition still cannot mutate
+    // audit processing.
     const calls = [...poller.matchAll(/fetch\(([^)]*)\)/g)].map((m) => m[1]);
     expect(calls).toEqual(["`/api/v1/audit-status/${token}`"]);
 
-    for (const source of [poller, page, stripComments(readFileSync(SCREEN, "utf8"))]) {
-      // No request options at all, so no method, body, or header can be set.
+    for (const source of [poller, page]) {
       expect(source).not.toContain("method:");
-      // Every audit-mutating route lives under /api/v1/audits/.
-      expect(source).not.toContain("/api/v1/audits");
     }
   });
 
@@ -365,11 +363,13 @@ describe("all three states render at all three breakpoints", () => {
     expect(css).toContain("--al-h1: 30px");
   });
 
-  it("styles every state-specific element the states can produce", () => {
+  it("styles the wait card and chip panel the three states can produce", () => {
     // Slow and review both add the wait card; only its tone differs.
     expect(css).toContain(".audit-loading-wait");
     expect(css).toContain(".audit-loading-status.is-slow");
     expect(css).toContain(".audit-loading-status.is-review");
+    expect(css).toContain(".audit-loading-chip");
+    expect(css).toContain(".audit-loading-chip.is-selected");
     for (const progress of ["done", "active", "pending"]) {
       expect(css).toContain(`data-progress="${progress}"`);
     }
@@ -395,12 +395,12 @@ describe("all three states render at all three breakpoints", () => {
     }
   });
 
-  it("renders three facts so mobile and tablet match their frames", () => {
-    expect(DID_YOU_KNOW_FACTS).toHaveLength(3);
-    // Desktop's frame shows two, so the third is hidden there rather than
-    // being a separate component.
-    expect(css).toContain("@media (min-width: 1024px)");
-    expect(css).toContain(".audit-loading-fact:nth-child(3)");
+  it("renders the five trade chips instead of Did you know facts", () => {
+    const screen = readFileSync(SCREEN, "utf8");
+    expect(screen).toContain("TradeChips");
+    expect(screen).not.toContain("DID_YOU_KNOW");
+    expect(css).toContain(".audit-loading-chip");
+    expect(css).not.toContain(".audit-loading-fact:nth-child(3)");
   });
 
   it("keeps stage copy and Cancel inside a 402px viewport", () => {

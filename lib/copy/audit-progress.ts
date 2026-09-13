@@ -187,14 +187,6 @@ export const WAIT_CARD: WaitCard = {
   body: "We\u2019ll email your audit report as soon as it\u2019s ready. You can safely leave this page while we finish reviewing your website.",
 };
 
-export const DID_YOU_KNOW_HEADING = "Did you know?";
-
-export const DID_YOU_KNOW_FACTS = [
-  "Visible licensing and insurance can reduce the perceived risk of contacting an unfamiliar business.",
-  "Website speed shapes a customer\u2019s first impression before they read a single word.",
-  "FAQs can answer objections that might otherwise prevent someone from contacting you.",
-] as const;
-
 /**
  * Resolves the whole screen for one status response.
  *
