@@ -9,6 +9,7 @@ import {
   type ResultsRecommendationInput,
   type ResultsView,
 } from "@/lib/copy/audit-results";
+import { readScheduleHandoffToken } from "@/lib/booking/schedule-handoff-token";
 import { getAuditStatus } from "@/lib/services/audit-status-service";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -200,16 +201,25 @@ export async function loadAuditResults(
 ): Promise<LoadAuditResultsResult> {
   try {
     const status = await getAuditStatus(publicStatusToken);
-    if ("error" in status) {
-      return { ok: false, code: status.code === "NOT_FOUND" ? "NOT_FOUND" : "SERVER_ERROR" };
-    }
-    const terminalWithoutReport =
-      status.status === "failed" || status.status === "unsupported";
-    if (!status.report && !terminalWithoutReport) {
-      return { ok: false, code: "NOT_FOUND" };
+    if (!("error" in status)) {
+      const terminalWithoutReport =
+        status.status === "failed" || status.status === "unsupported";
+      if (!status.report && !terminalWithoutReport) {
+        return { ok: false, code: "NOT_FOUND" };
+      }
+
+      const loaded = await loadAuditResultsByAuditId(status.auditId);
+      if (!loaded.ok) return loaded;
+      return { ...loaded, statusToken: publicStatusToken };
     }
 
-    const loaded = await loadAuditResultsByAuditId(status.auditId);
+    if (status.code !== "NOT_FOUND") {
+      return { ok: false, code: "SERVER_ERROR" };
+    }
+
+    const handoff = readScheduleHandoffToken(publicStatusToken);
+    if (!handoff) return { ok: false, code: "NOT_FOUND" };
+    const loaded = await loadAuditResultsByAuditId(handoff.auditId);
     if (!loaded.ok) return loaded;
     return { ...loaded, statusToken: publicStatusToken };
   } catch (error) {

@@ -4,6 +4,7 @@ import {
   createSupabaseBookingSessionStore,
   type BookingSessionStore,
 } from "./session";
+import { signScheduleHandoffToken } from "./schedule-handoff-token";
 import { createAdminClient } from "../supabase/admin";
 
 /**
@@ -19,7 +20,7 @@ export const BOOKING_UNAVAILABLE_MESSAGE =
 
 export type CalendarHandoffResult =
   | { ok: true; url: string }
-  | { ok: false; reason: "unavailable" };
+  | { ok: false; reason: "unavailable"; statusToken?: string };
 
 export interface CalendarHandoffSession {
   expiresAt: string;
@@ -74,6 +75,7 @@ export async function resolveCalendarHandoffFromReportCookie(
     loadPrepare?: typeof loadPrepareFromReportCookie;
     handoffStore?: CalendarHandoffStore;
     now?: Date;
+    signHandoff?: typeof signScheduleHandoffToken;
   } = {},
 ): Promise<CalendarHandoffResult> {
   const loadPrepare = deps.loadPrepare ?? loadPrepareFromReportCookie;
@@ -82,7 +84,23 @@ export async function resolveCalendarHandoffFromReportCookie(
 
   const handoffStore = deps.handoffStore ?? createSupabaseCalendarHandoffStore();
   const session = await handoffStore.findSessionByAuditId(loaded.auditId);
-  return resolveCalendarHandoff(session, deps.now);
+  const result = resolveCalendarHandoff(session, deps.now);
+  if (result.ok) return result;
+
+  try {
+    const signHandoff = deps.signHandoff ?? signScheduleHandoffToken;
+    const statusToken = signHandoff({
+      auditId: loaded.auditId,
+      now: deps.now,
+    });
+    return { ok: false, reason: "unavailable", statusToken };
+  } catch (error) {
+    console.error(
+      "Failed to attach report identity to the schedule fallback:",
+      error,
+    );
+    return { ok: false, reason: "unavailable" };
+  }
 }
 
 export function createSupabaseCalendarHandoffStore(): CalendarHandoffStore {

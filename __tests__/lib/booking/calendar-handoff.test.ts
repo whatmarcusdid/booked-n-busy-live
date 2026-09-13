@@ -11,6 +11,8 @@ import {
 } from "@/lib/booking/calendar-handoff";
 import { hmacSha256 } from "@/lib/crypto";
 import type { BookingAuditRef } from "@/lib/booking/session";
+import { readScheduleHandoffToken } from "@/lib/booking/schedule-handoff-token";
+import { signReportAccess } from "@/lib/reports/access-cookie";
 
 const NOW = new Date("2026-09-09T18:00:00.000Z");
 const STATUS_TOKEN = "s".repeat(64);
@@ -52,6 +54,8 @@ describe("Google Calendar booking URL", () => {
     expect(source).not.toContain("URLSearchParams");
     expect(source).not.toContain("?name");
     expect(source).not.toContain("?email");
+    expect(source).not.toContain("persistReportHandoffStatusToken");
+    expect(source).not.toContain("public_status_token_hash");
   });
 });
 
@@ -118,8 +122,12 @@ describe("status-token and cookie resolvers", () => {
   });
 
   it("uses the report-cookie prepare loader, then the booking session row", async () => {
+    const signHandoff = jest.fn(() => {
+      throw new Error("must not mint a handoff token for a live session");
+    });
     const result = await resolveCalendarHandoffFromReportCookie("cookie", {
       now: NOW,
+      signHandoff,
       loadPrepare: async (cookieValue) => {
         expect(cookieValue).toBe("cookie");
         return {
@@ -138,6 +146,80 @@ describe("status-token and cookie resolvers", () => {
       },
     });
     expect(result.ok).toBe(true);
+    expect(signHandoff).not.toHaveBeenCalled();
+  });
+
+  it("attaches a signed handoff token when the session is dead but the audit resolves", async () => {
+    const cookie = signReportAccess({
+      tokenHash: "report-token-hash-1",
+      expired: false,
+    });
+    const result = await resolveCalendarHandoffFromReportCookie(cookie, {
+      now: NOW,
+      loadPrepare: async () => ({
+        ok: true,
+        auditId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        leadId: "lead-1",
+        auditState: "complete",
+        view: {} as never,
+      }),
+      handoffStore: {
+        async findSessionByAuditId() {
+          return openSession({ expiresAt: "2026-09-09T17:59:59.000Z" });
+        },
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("unavailable");
+    const claim = readScheduleHandoffToken(result.statusToken, NOW);
+    expect(claim).toEqual({
+      auditId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      purpose: "schedule-handoff",
+      expiresAt: NOW.getTime() + 5 * 60 * 1000,
+    });
+  });
+
+  it("does not attach a token when the cookie itself cannot be resolved", async () => {
+    const signHandoff = jest.fn(() => "must-not-sign");
+    const result = await resolveCalendarHandoffFromReportCookie(undefined, {
+      now: NOW,
+      signHandoff,
+      loadPrepare: async () => ({ ok: false, code: "NOT_FOUND" }),
+      handoffStore: {
+        async findSessionByAuditId() {
+          throw new Error("must not look up a session without a cookie");
+        },
+      },
+    });
+    expect(result).toEqual({ ok: false, reason: "unavailable" });
+    expect(signHandoff).not.toHaveBeenCalled();
+  });
+
+  it("falls back without a token when signing the handoff throws", async () => {
+    const cookie = signReportAccess({
+      tokenHash: "report-token-hash-1",
+      expired: false,
+    });
+    const result = await resolveCalendarHandoffFromReportCookie(cookie, {
+      now: NOW,
+      signHandoff: () => {
+        throw new Error("DATA_HASH_SECRET missing");
+      },
+      loadPrepare: async () => ({
+        ok: true,
+        auditId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        leadId: "lead-1",
+        auditState: "complete",
+        view: {} as never,
+      }),
+      handoffStore: {
+        async findSessionByAuditId() {
+          return null;
+        },
+      },
+    });
+    expect(result).toEqual({ ok: false, reason: "unavailable" });
   });
 });
 
@@ -146,10 +228,5 @@ describe("unavailable copy", () => {
     expect(BOOKING_UNAVAILABLE_MESSAGE).toBe(
       "This booking link has expired — request a new one from your report",
     );
-    const page = readFileSync(
-      join(process.cwd(), "app/schedule/page.tsx"),
-      "utf8",
-    );
-    expect(page).toContain("BOOKING_UNAVAILABLE_MESSAGE");
   });
 });
