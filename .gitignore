@@ -38,6 +38,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
+# local scratch (screenshots, fixtures, font copies)
+/tmp/
+
 # local supabase CLI state
 supabase/.branches/
 supabase/.temp/
