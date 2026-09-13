@@ -94,6 +94,13 @@ export interface ResultsCheckDefinition {
   passCopy: string;
 }
 
+/** Screen-reader-only labels for non-pass check rows. Pass uses `passCopy`. */
+export const CHECK_OUTCOME_COPY = {
+  fail: "Needs fixing",
+  partial: "Partly in place",
+  needs_review: "Needs a closer look",
+} as const;
+
 export interface ResultsPillarDefinition {
   key: PillarKey;
   slug: string;

@@ -6,14 +6,31 @@ import { TIMING_PROMISE } from "@/lib/copy/timing";
 import { MdFilledButton } from "@/lib/material/md-filled-button";
 import { MdOutlinedTextField } from "@/lib/material/md-outlined-text-field";
 
+const INTAKE_FIELD_NAMES = [
+  "firstName",
+  "businessName",
+  "email",
+  "websiteUrl",
+] as const;
+
+type IntakeFieldName = (typeof INTAKE_FIELD_NAMES)[number];
+
+function isIntakeFieldName(value: string): value is IntakeFieldName {
+  return (INTAKE_FIELD_NAMES as readonly string[]).includes(value);
+}
+
 export function IntakeForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<IntakeFieldName, string>>
+  >({});
   const [pending, setPending] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
     setPending(true);
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -48,15 +65,30 @@ export function IntakeForm() {
         fields?: Array<{ field: string; message: string }>;
       };
       if (!response.ok || !data.statusUrl) {
-        setError(
-          data.fields?.map((field) => field.message).join(" ") ||
-            data.error ||
-            "Could not start the audit.",
-        );
+        const nextFieldErrors: Partial<Record<IntakeFieldName, string>> = {};
+        const unmatched: string[] = [];
+        for (const item of data.fields ?? []) {
+          if (isIntakeFieldName(item.field)) {
+            nextFieldErrors[item.field] = item.message;
+          } else {
+            unmatched.push(item.message);
+          }
+        }
+        setFieldErrors(nextFieldErrors);
+        const matchedCount = Object.keys(nextFieldErrors).length;
+        const summary =
+          unmatched.join(" ") ||
+          (matchedCount !== 1
+            ? data.fields?.map((field) => field.message).join(" ") ||
+              data.error ||
+              "Could not start the audit."
+            : null);
+        setError(summary);
         return;
       }
       router.push(data.statusUrl);
     } catch {
+      setFieldErrors({});
       setError("Could not start the audit.");
     } finally {
       setPending(false);
@@ -70,12 +102,20 @@ export function IntakeForm() {
         label="First name"
         required
         autocomplete="given-name"
+        className={fieldErrors.firstName ? "is-invalid" : undefined}
+        error={fieldErrors.firstName ? true : undefined}
+        errorText={fieldErrors.firstName}
+        aria-invalid={fieldErrors.firstName ? true : undefined}
       />
       <MdOutlinedTextField
         name="businessName"
         label="Business name"
         required
         autocomplete="organization"
+        className={fieldErrors.businessName ? "is-invalid" : undefined}
+        error={fieldErrors.businessName ? true : undefined}
+        errorText={fieldErrors.businessName}
+        aria-invalid={fieldErrors.businessName ? true : undefined}
       />
       <MdOutlinedTextField
         name="email"
@@ -83,12 +123,20 @@ export function IntakeForm() {
         type="email"
         required
         autocomplete="email"
+        className={fieldErrors.email ? "is-invalid" : undefined}
+        error={fieldErrors.email ? true : undefined}
+        errorText={fieldErrors.email}
+        aria-invalid={fieldErrors.email ? true : undefined}
       />
       <MdOutlinedTextField
         name="websiteUrl"
         label="Website URL"
         required
         autocomplete="url"
+        className={fieldErrors.websiteUrl ? "is-invalid" : undefined}
+        error={fieldErrors.websiteUrl ? true : undefined}
+        errorText={fieldErrors.websiteUrl}
+        aria-invalid={fieldErrors.websiteUrl ? true : undefined}
       />
       <MdFilledButton disabled={pending} type="submit">
         {pending ? "Starting…" : "Run My Free Audit"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MANUAL_REVIEW_SENT_COPY,
   SEND_REQUEST_LABEL,
@@ -11,6 +11,11 @@ export function RequestManualReview({ token }: { token: string }) {
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sentRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (sent) sentRef.current?.focus();
+  }, [sent]);
 
   async function onClick() {
     setError(null);
@@ -35,7 +40,13 @@ export function RequestManualReview({ token }: { token: string }) {
 
   if (sent) {
     return (
-      <p className="audit-results-sent" data-testid="manual-review-sent">
+      <p
+        ref={sentRef}
+        className="audit-results-sent"
+        data-testid="manual-review-sent"
+        role="status"
+        tabIndex={-1}
+      >
         {MANUAL_REVIEW_SENT_COPY}
       </p>
     );

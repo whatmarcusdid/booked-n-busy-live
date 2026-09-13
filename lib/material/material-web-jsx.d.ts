@@ -12,6 +12,8 @@ type MdElementProps = DetailedHTMLProps<
   label?: string;
   required?: boolean;
   autocomplete?: string;
+  error?: boolean;
+  errorText?: string;
 };
 
 declare module "react" {

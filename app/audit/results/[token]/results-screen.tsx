@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { BRAND_NAME } from "@/lib/identity";
 import {
+  CHECK_OUTCOME_COPY,
   FAILED_BODY_LEAD,
   FAILED_BODY_TAIL,
   FAILED_MANUAL_REVIEW_QUESTION,
@@ -96,7 +97,16 @@ function CheckRowProvisional({
       <span className="audit-results-check-marker" aria-hidden="true">
         –
       </span>
-      <p className="audit-results-check-text">{check.name}</p>
+      <p className="audit-results-check-text">
+        {check.outcome !== "pass" ? (
+          <span className="sr-only">
+            {check.outcome === "not_assessed"
+              ? NOT_ASSESSED_CARD_TITLE
+              : CHECK_OUTCOME_COPY[check.outcome]}{" "}
+          </span>
+        ) : null}
+        {check.name}
+      </p>
     </div>
   );
 }
@@ -155,10 +165,10 @@ function Recommendations({
 
 function VideoThumb() {
   return (
-    <div className="audit-results-video">
+    <div className="audit-results-video" aria-hidden="true">
       <img
         src="/audit/results-video.png"
-        alt="Your website is working. Strong across all 3 pillars."
+        alt=""
         width={1264}
         height={705}
       />
