@@ -126,7 +126,7 @@ describe("Failed and Unsupported results views", () => {
 
     const page = readFileSync(PAGE, "utf8");
     expect(page).toMatch(
-      /view\.auditState === "unsupported" \? undefined/,
+      /view\.auditState === "unsupported" \|\| bookedView \? undefined/,
     );
     const screen = readFileSync(SCREEN, "utf8");
     expect(screen).toContain("UNSUPPORTED_BODY");

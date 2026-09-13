@@ -1,0 +1,132 @@
+/*
+ * Booked findings-call module (Figma 131:1175 / 131:1259 / 131:1377).
+ * Informational — no primary button. Add To Calendar is omitted until
+ * calendar-add data exists.
+ */
+
+.findings-call-booked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 48px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.findings-call-booked p,
+.findings-call-booked h2,
+.findings-call-booked h3,
+.findings-call-booked dt,
+.findings-call-booked dd {
+  margin: 0;
+}
+
+.findings-call-booked-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  width: 100%;
+}
+
+.findings-call-booked-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  background: #dcfce7;
+  color: #14532d;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.findings-call-booked-when {
+  width: 100%;
+  min-height: 1.25em;
+  font-family: var(--font-ratch), sans-serif;
+  font-size: var(--ar-h1, 30px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #0c0a28;
+  overflow-wrap: break-word;
+}
+
+.findings-call-booked-change {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: #737373;
+}
+
+.findings-call-booked-change-hint {
+  color: #2920a5;
+  text-decoration: underline;
+  text-underline-position: from-font;
+}
+
+.findings-call-booked-prep {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 32px;
+  width: 100%;
+}
+
+.findings-call-booked-prep-headline {
+  font-family: var(--font-ratch), sans-serif;
+  font-size: var(--ar-h1, 30px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #0c0a28;
+}
+
+.findings-call-booked-prep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.findings-call-booked-prep-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.findings-call-booked-prep-item dt {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #171717;
+}
+
+.findings-call-booked-prep-item dd {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: #0c0a28;
+}
+
+@media (min-width: 768px) {
+  .findings-call-booked-when,
+  .findings-call-booked-prep-headline {
+    font-size: var(--ar-h1, 32px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .findings-call-booked {
+    max-width: 500px;
+  }
+
+  .findings-call-booked-when,
+  .findings-call-booked-prep-headline {
+    font-size: var(--ar-h1, 36px);
+  }
+}

@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { BookFindingsCall } from "@/app/book-findings-call";
+import { FindingsCallBooked } from "@/app/findings-call-booked";
+import { loadFindingsCallBooked } from "@/lib/booking/findings-call-booked";
 import { loadAuditResults } from "@/lib/services/audit-results-service";
 import { RequestManualReview } from "./request-manual-review";
 import { ResultsScreen } from "./results-screen";
@@ -28,12 +30,28 @@ export default async function AuditResultsPage({
   if (!loaded.ok) notFound();
 
   const { view } = loaded;
+  const terminal =
+    view.auditState === "failed" || view.auditState === "unsupported";
+  const bookedView = terminal
+    ? null
+    : await loadFindingsCallBooked(loaded.auditId);
   const cta =
     view.auditState === "failed" ? (
       <RequestManualReview token={token} />
-    ) : view.auditState === "unsupported" ? undefined : (
+    ) : view.auditState === "unsupported" || bookedView ? undefined : (
       <BookFindingsCall statusToken={token} />
     );
+  const booked = bookedView ? (
+    <FindingsCallBooked view={bookedView} />
+  ) : undefined;
 
-  return <ResultsScreen token={token} mode="hub" view={view} cta={cta} />;
+  return (
+    <ResultsScreen
+      token={token}
+      mode="hub"
+      view={view}
+      cta={cta}
+      booked={booked}
+    />
+  );
 }

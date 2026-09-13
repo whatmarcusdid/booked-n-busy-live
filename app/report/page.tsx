@@ -1,10 +1,15 @@
 import { cookies } from "next/headers";
+import {
+  findAuditIdByReportTokenHash,
+  loadFindingsCallBooked,
+} from "@/lib/booking/findings-call-booked";
 import { resolveCookieReportAccess } from "@/lib/reports/access";
 import {
   REPORT_ACCESS_COOKIE,
   readReportAccess,
 } from "@/lib/reports/access-cookie";
 import { BookFindingsCall } from "../book-findings-call";
+import { FindingsCallBooked } from "../findings-call-booked";
 import { ExpiredReportRequest } from "./expired-report-request";
 import { ReportContent } from "./report-content";
 
@@ -70,12 +75,21 @@ export default async function ReportPage() {
     );
   }
 
+  const auditId = await findAuditIdByReportTokenHash(access.tokenHash);
+  const bookedView = auditId
+    ? await loadFindingsCallBooked(auditId)
+    : null;
+
   return (
     <main>
       <section className="card">
         <h1>Your website diagnostic</h1>
         <ReportContent report={access.report} />
-        <BookFindingsCall />
+        {bookedView ? (
+          <FindingsCallBooked view={bookedView} />
+        ) : (
+          <BookFindingsCall />
+        )}
       </section>
     </main>
   );

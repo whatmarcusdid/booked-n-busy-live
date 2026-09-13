@@ -483,6 +483,10 @@ main.audit-results {
     padding-bottom: 120px;
   }
 
+  .audit-results[data-mode="hub"][data-booked="true"] {
+    padding-bottom: 32px;
+  }
+
   .audit-results[data-mode="hub"] .audit-results-sheet {
     display: flex;
     position: fixed;

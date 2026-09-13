@@ -304,12 +304,14 @@ export function ResultsScreen({
   pillarKey,
   view,
   cta,
+  booked,
 }: {
   token: string;
   mode: "hub" | "detail";
   pillarKey?: string;
   view: ResultsView;
   cta?: ReactNode;
+  booked?: ReactNode;
 }) {
   const variant = view.auditState;
   const terminal = variant === "failed" || variant === "unsupported";
@@ -330,6 +332,7 @@ export function ResultsScreen({
       className="audit-results"
       data-mode={mode}
       data-variant={variant}
+      data-booked={booked ? "true" : undefined}
     >
       <nav className="audit-results-nav" aria-label="Primary">
         <Logo token={token} />
@@ -353,6 +356,7 @@ export function ResultsScreen({
           data-testid="results-hub"
         >
           <HubHero view={view} />
+          {booked}
           <HubCards token={token} pillars={view.pillars} variant={variant} />
           {showVideo ? <VideoThumb /> : null}
         </div>
@@ -421,6 +425,7 @@ export function ResultsScreen({
           data-testid="results-desktop"
         >
           <HubHero view={view} />
+          {booked}
           <div className="audit-results-columns">
             {view.pillars.map((pillar) => (
               <DesktopColumn
