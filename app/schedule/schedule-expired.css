@@ -1,0 +1,225 @@
+/*
+ * Booking-link dead-end — expired-never-booked Figma 131:860 / 131:916 /
+ * 131:990; already-booked (consumed) Figma 131:1066 / 131:1093 / 131:1119.
+ * Light surface, same token names as Loading / Results.
+ *
+ * Breakpoints match Landing, Loading, Results, and Prepare: mobile 0–767 |
+ * tablet 768–1023 | desktop 1024+.
+ */
+
+.schedule-expired {
+  --se-text-default: #0c0a28;
+  --se-text-subtle: #737373;
+  --se-action-primary: #2920a5;
+  --se-surface-page: #ffffff;
+  --se-radius: 8px;
+  --se-h1: 30px;
+
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 44px;
+  margin: 0;
+  padding: 32px 24px;
+  color: var(--se-text-default);
+  background: var(--se-surface-page);
+  overflow-x: hidden;
+}
+
+/* Keep the hero out from under the overlay nav on short phones. */
+@media (max-height: 700px) {
+  .schedule-expired,
+  main.schedule-expired {
+    justify-content: flex-start;
+    padding-top: 99px;
+  }
+}
+
+/* globals.css styles every `main` as a centered grid with 2rem padding. */
+main.schedule-expired {
+  display: flex;
+  place-items: unset;
+  padding: 32px 24px;
+}
+
+.schedule-expired p,
+.schedule-expired h1 {
+  margin: 0;
+  color: inherit;
+  letter-spacing: 0;
+}
+
+/* Nav is out of flow so the hero stays vertically centered, matching Figma. */
+
+.schedule-expired-nav {
+  position: absolute;
+  top: 32px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  height: 51px;
+}
+
+.schedule-expired-logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.schedule-expired-logo-mark,
+.schedule-expired-wordmark {
+  display: block;
+  overflow: hidden;
+}
+
+.schedule-expired-logo-mark {
+  width: 51px;
+  height: 51px;
+}
+
+.schedule-expired-wordmark {
+  width: 94px;
+  height: 51px;
+}
+
+.schedule-expired-logo-mark img,
+.schedule-expired-wordmark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.schedule-expired-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.schedule-expired-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.schedule-expired-icon {
+  display: block;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+}
+
+.schedule-expired-icon img {
+  display: block;
+  width: 56px;
+  height: 56px;
+}
+
+.schedule-expired-headline {
+  width: 100%;
+  font-family: var(--font-ratch), sans-serif;
+  font-size: var(--se-h1);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0;
+  color: var(--se-text-default);
+  overflow-wrap: break-word;
+}
+
+.schedule-expired-body {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--se-text-subtle);
+  overflow-wrap: break-word;
+}
+
+.schedule-expired-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 100px;
+  height: 44px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--se-radius);
+  background: var(--se-action-primary);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.schedule-expired-cta:focus-visible,
+.schedule-expired-support:focus-visible,
+.schedule-expired-logo:focus-visible {
+  outline: 2px solid var(--se-action-primary);
+  outline-offset: 3px;
+}
+
+.schedule-expired-support {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--se-action-primary);
+  text-decoration: underline;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .schedule-expired {
+    --se-h1: 32px;
+  }
+
+  .schedule-expired-hero {
+    max-width: 500px;
+  }
+
+  .schedule-expired-cta {
+    width: 250px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .schedule-expired {
+    --se-h1: 36px;
+  }
+
+  .schedule-expired-content {
+    max-width: 800px;
+  }
+
+  .schedule-expired-hero {
+    max-width: 500px;
+  }
+
+  .schedule-expired-cta {
+    width: 250px;
+  }
+}

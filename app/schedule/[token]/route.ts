@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveCalendarHandoffFromStatusToken } from "@/lib/booking/calendar-handoff";
-import { SCHEDULE_PATH } from "@/lib/copy/pre-call";
+import { scheduleExpiredPath } from "@/lib/copy/schedule-expired";
 
 /**
  * Live-session Calendar handoff. The status token authorizes lookup of the
@@ -16,5 +16,8 @@ export async function GET(
   if (result.ok) {
     return NextResponse.redirect(result.url, 302);
   }
-  return NextResponse.redirect(new URL(SCHEDULE_PATH, request.url), 302);
+  return NextResponse.redirect(
+    new URL(scheduleExpiredPath(token), request.url),
+    302,
+  );
 }
