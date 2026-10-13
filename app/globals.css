@@ -7,7 +7,7 @@
 @layer base {
   :root {
     color-scheme: light;
-    /* Book Service design tokens - shadcn/ui theme mapping */
+    /* Brand design tokens - shadcn/ui theme mapping */
     --background: 248 250 252; /* --color-bg-canvas #f8fafc */
     --foreground: 3 7 18; /* --color-text-strong #030712 */
     --card: 0 0 100%; /* --color-bg-surface #ffffff */
