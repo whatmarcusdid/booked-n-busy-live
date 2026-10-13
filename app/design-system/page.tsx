@@ -237,6 +237,118 @@ export default function DesignSystemPage() {
 
         <section>
           <h2 className="font-[family-name:var(--typography-display-sm-family)] text-[length:var(--typography-display-sm-size)] font-[number:var(--typography-display-sm-weight)] leading-[var(--typography-display-sm-line-height)] tracking-[var(--typography-display-sm-letter-spacing)] text-[var(--color-text-strong)] mb-[var(--space-24)]">
+            Logos
+          </h2>
+
+          <div className="space-y-[var(--space-32)]">
+            <div>
+              <h3 className="font-[family-name:var(--typography-body-md-bold-family)] text-[length:var(--typography-body-md-bold-size)] font-[number:var(--typography-body-md-bold-weight)] mb-[var(--space-16)] text-[var(--color-text-strong)]">
+                Primary Logo (Horizontal)
+              </h3>
+              <div className="flex gap-[var(--space-32)] items-center flex-wrap">
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Small (24px)
+                  </p>
+                  <Logo variant="primary" size="sm" />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Medium (32px)
+                  </p>
+                  <Logo variant="primary" size="md" />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Large (48px)
+                  </p>
+                  <Logo variant="primary" size="lg" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-[family-name:var(--typography-body-md-bold-family)] text-[length:var(--typography-body-md-bold-size)] font-[number:var(--typography-body-md-bold-weight)] mb-[var(--space-16)] text-[var(--color-text-strong)]">
+                Secondary Logo (Stacked)
+              </h3>
+              <div className="flex gap-[var(--space-32)] items-end flex-wrap">
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Small (24px)
+                  </p>
+                  <Logo variant="secondary" size="sm" />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Medium (32px)
+                  </p>
+                  <Logo variant="secondary" size="md" />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Large (48px)
+                  </p>
+                  <Logo variant="secondary" size="lg" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-[family-name:var(--typography-body-md-bold-family)] text-[length:var(--typography-body-md-bold-size)] font-[number:var(--typography-body-md-bold-weight)] mb-[var(--space-16)] text-[var(--color-text-strong)]">
+                Secondary Logo with Tagline
+              </h3>
+              <div className="flex gap-[var(--space-32)] items-end flex-wrap">
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Small (24px)
+                  </p>
+                  <Logo variant="secondary-tagline" size="sm" />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Medium (32px)
+                  </p>
+                  <Logo variant="secondary-tagline" size="md" />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Large (48px)
+                  </p>
+                  <Logo variant="secondary-tagline" size="lg" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-[family-name:var(--typography-body-md-bold-family)] text-[length:var(--typography-body-md-bold-size)] font-[number:var(--typography-body-md-bold-weight)] mb-[var(--space-16)] text-[var(--color-text-strong)]">
+                Logo Mark (Icon)
+              </h3>
+              <div className="flex gap-[var(--space-32)] items-end flex-wrap">
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Small (24px)
+                  </p>
+                  <Logo variant="mark" size="sm" />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Medium (32px)
+                  </p>
+                  <Logo variant="mark" size="md" />
+                </div>
+                <div>
+                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
+                    Large (48px)
+                  </p>
+                  <Logo variant="mark" size="lg" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="font-[family-name:var(--typography-display-sm-family)] text-[length:var(--typography-display-sm-size)] font-[number:var(--typography-display-sm-weight)] leading-[var(--typography-display-sm-line-height)] tracking-[var(--typography-display-sm-letter-spacing)] text-[var(--color-text-strong)] mb-[var(--space-24)]">
             Other Components
           </h2>
 
@@ -246,26 +358,6 @@ export default function DesignSystemPage() {
                 Eyebrow
               </h3>
               <Eyebrow>Featured Content</Eyebrow>
-            </div>
-
-            <div>
-              <h3 className="font-[family-name:var(--typography-body-md-bold-family)] text-[length:var(--typography-body-md-bold-size)] font-[number:var(--typography-body-md-bold-weight)] mb-[var(--space-16)] text-[var(--color-text-strong)]">
-                Logo
-              </h3>
-              <div className="flex gap-[var(--space-24)] items-end">
-                <div>
-                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
-                    Small (32px)
-                  </p>
-                  <Logo size="sm" />
-                </div>
-                <div>
-                  <p className="font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] text-[var(--color-text-muted)] mb-[var(--space-8)]">
-                    Large (48px)
-                  </p>
-                  <Logo size="lg" />
-                </div>
-              </div>
             </div>
           </div>
         </section>
