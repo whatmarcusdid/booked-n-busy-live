@@ -9,7 +9,9 @@
     "lint": "eslint",
     "lint:design": "npx @google/design.md lint DESIGN.md",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "figma:connect:parse": "figma connect parse --verbose",
+    "figma:connect:publish": "figma connect publish --verbose"
   },
   "dependencies": {
     "@material/web": "^2.5.0",
@@ -32,6 +34,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@figma/code-connect": "^1.5.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/jest": "^30.0.0",

@@ -11,7 +11,7 @@ const Nav = React.forwardRef<
   <nav
     ref={ref}
     className={cn(
-      "h-[65px] flex items-center",
+      "h-[var(--component-nav-height)] flex items-center",
       variant === "light"
         ? "bg-[var(--color-bg-nav)] text-[var(--color-text-strong)]"
         : "bg-transparent text-[var(--color-text-on-dark)]",

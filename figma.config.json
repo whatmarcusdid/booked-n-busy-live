@@ -1,0 +1,9 @@
+{
+  "codeConnect": {
+    "include": ["components/ui/**/*.figma.tsx"],
+    "parser": "react",
+    "documentUrlSubstitutions": {
+      "FIGMA_FILE_KEY": "DqJfGSlaDK0EcqcBuMcftL"
+    }
+  }
+}

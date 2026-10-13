@@ -8,13 +8,17 @@ colors:
   secondary: "#2920a5"
   secondary-hover: "#211880"
   bg-dark: "#0c0a28"
+  bg-footer: "#030712"
   bg-canvas: "#f8fafc"
   bg-surface: "#ffffff"
   bg-disabled: "#d1d5db"
   text-strong: "#030712"
+  text-heading: "#0c0a28"
   text-muted: "#52525b"
   text-on-dark: "#ffffff"
   error: "#e7000b"
+  shadow-card: "#00000014"
+  shadow-soft: "#5555551a"
 typography:
   display-xl: { fontFamily: Ratch, fontSize: 52px, fontWeight: 700, lineHeight: 62.4px, letterSpacing: -0.52px }
   display-sm: { fontFamily: Ratch, fontSize: 24px, fontWeight: 700, lineHeight: 28.8px, letterSpacing: -0.24px }
@@ -28,6 +32,7 @@ rounded:
   full: 9999px
 spacing:
   "4": 4px
+  "6": 6px
   "8": 8px
   "16": 16px
   "24": 24px
@@ -59,6 +64,7 @@ components:
     backgroundColor: "{colors.bg-surface}"
     textColor: "{colors.text-strong}"
     rounded: "{rounded.md}"
+    borderWidth: 1px
     padding: 12px 16px
     height: 48px
   page:
@@ -96,10 +102,13 @@ Always `var(--color-…)`. Full list and provenance in `tokens.json`.
 | CTA bg | `--color-brand-primary` / `-hover` | Green. Text on it: `--color-text-on-primary` |
 | Brand / app action / focus | `--color-brand-secondary` / `-hover`, `--color-focus-ring` | Indigo |
 | Dark section | `--color-bg-dark` + `--color-text-on-dark` | |
+| Footer / dark surface | `--color-bg-footer` | Distinguishes from bg-dark |
 | Page / card / nav | `--color-bg-canvas`, `--color-bg-surface`, `--color-bg-nav` | |
 | Text | `--color-text-strong`, `--color-text-body`, `--color-text-muted` | |
-| Borders | `--color-border-default`, `--color-border-input` | |
+| Headings | `--color-text-heading` | Brand navy, distinct from text-strong |
+| Borders | `--color-border-default`, `--color-border-input` | border-input aliases text-muted |
 | Error | `--color-feedback-error` | No success/warning/info tokens exist |
+| Shadows | `--color-shadow-card`, `--color-shadow-soft` | Used in shadow.* composite tokens |
 
 Gradients `--gradient-gradient-1..3` are decorative only (Figma adds a WebGPU mesh overlay CSS can't match).
 
@@ -127,7 +136,7 @@ Fails: `brand-primary` on light surfaces 1.9:1 (never as text/icon/border there)
 ## Layout
 
 - 4px base (`--space-*`: 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 120, 140, 160).
-  Common gap values: 16, 24, 8. Desktop section padding uses 120–160 vertical, 140 horizontal.
+  Common gap values: 16, 24, 8. Label-to-field gap: 6px (`--space-6`). Desktop section padding uses 120–160 vertical, 140 horizontal.
 - Container max `--size-container-max` (80rem).
 - Breakpoints (`breakpoint.*`): sm 640, md 768, lg 1024, xl 1280, 2xl 1536. Marketing only uses 640/1024.
 - Flex/grid with `gap`; no absolute positioning outside decorative art.
@@ -168,8 +177,9 @@ Never put the indigo outline on `bg-dark` (1.7:1).
 
 ### Input (standard)
 Standardized on live `/book-call`: bg `surface`, text `text-strong`, placeholder `text-muted`,
-border 1px `text-muted` (7.7:1 on surface), `radius-md`, height `control-lg` (48px), padding `space-12`×`space-16`,
-`body-sm`; label above in `label`.
+border `--component-input-border-width` (1px) `--component-input-border` (aliases `text-muted`, 7.7:1 on surface), 
+`radius-md`, height `control-lg` (48px), padding `space-12`×`space-16`, `body-sm`; label above in `label` 
+with `--component-input-label-gap` (6px).
 - focus: border `brand-secondary` + focus ring (below). error: border + message `feedback-error`
   (4.8:1 on surface). disabled: bg `bg-disabled` (live used Tailwind gray-100; confirm).
 
@@ -181,7 +191,7 @@ Replaces the other live ring colors.
 ### Other
 | Component | Notes |
 |---|---|
-| Nav / header | 65px; light (`bg-nav`) or over dark hero (`text-on-dark`); items `radius-md`, 8×12 padding |
+| Nav / header | `--component-nav-height` (65px); light (`bg-nav`) or over dark hero (`text-on-dark`); items `radius-md`, 8×12 padding |
 | Card (blog link) | `surface`, `radius-lg`, `shadow-card`; no hover state found |
 | Social sign-in | Google (surface + `border-input`), Apple (`text-strong` bg) — app `/signin` |
 | Logo / graphics | SVG from Figma only |

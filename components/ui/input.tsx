@@ -13,7 +13,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          "flex w-full bg-[var(--component-input-bg)] text-[var(--component-input-text)] border border-[var(--component-input-border)] rounded-[var(--component-input-radius)] h-[var(--component-input-height)] px-[var(--component-input-padding-x)] py-[var(--component-input-padding-y)]",
+          "flex w-full bg-[var(--component-input-bg)] text-[var(--component-input-text)] border-[length:var(--component-input-border-width)] border-[var(--component-input-border)] rounded-[var(--component-input-radius)] h-[var(--component-input-height)] px-[var(--component-input-padding-x)] py-[var(--component-input-padding-y)]",
           "font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] font-[number:var(--typography-body-sm-weight)] leading-[var(--typography-body-sm-line-height)] tracking-[var(--typography-body-sm-letter-spacing)]",
           "placeholder:text-[var(--component-input-placeholder)]",
           "focus-visible:outline-none focus-visible:border-[var(--component-input-border-focus)] focus-visible:ring-[length:var(--component-focus-ring-width)] focus-visible:ring-[var(--component-focus-ring-color)] focus-visible:ring-offset-[length:var(--component-focus-ring-offset)]",

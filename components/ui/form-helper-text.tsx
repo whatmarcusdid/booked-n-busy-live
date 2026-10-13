@@ -14,7 +14,7 @@ const FormHelperText = React.forwardRef<HTMLParagraphElement, FormHelperTextProp
         ref={ref}
         className={cn(
           "font-[family-name:var(--typography-body-sm-family)] text-[length:var(--typography-body-sm-size)] font-[number:var(--typography-body-sm-weight)] leading-[var(--typography-body-sm-line-height)] tracking-[var(--typography-body-sm-letter-spacing)]",
-          "mt-[var(--space-6)]",
+          "mt-[var(--component-input-label-gap)]",
           error ? "text-[var(--color-feedback-error)]" : "text-[var(--color-text-muted)]",
           className
         )}
