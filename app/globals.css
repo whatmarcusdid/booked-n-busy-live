@@ -1,80 +1,106 @@
-:root {
-  color-scheme: light;
-  --bg: #f6f1ea;
-  --ink: #1c1917;
-  --muted: #57534e;
-  --card: #fffdf9;
-  --accent: #c2410c;
+@import url('../design/tokens/tokens.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    /* Book Service design tokens - shadcn/ui theme mapping */
+    --background: 248 250 252; /* --color-bg-canvas #f8fafc */
+    --foreground: 3 7 18; /* --color-text-strong #030712 */
+    --card: 0 0 100%; /* --color-bg-surface #ffffff */
+    --card-foreground: 3 7 18; /* --color-text-strong */
+    --popover: 0 0 100%; /* --color-bg-surface */
+    --popover-foreground: 3 7 18; /* --color-text-strong */
+    --primary: 205 255 210; /* --color-brand-primary #34d399 */
+    --primary-foreground: 12 10 40; /* --color-text-on-primary #0c0a28 */
+    --secondary: 41 32 165; /* --color-brand-secondary #2920a5 */
+    --secondary-foreground: 255 255 255; /* --color-text-on-dark */
+    --muted: 248 250 252; /* --color-bg-canvas */
+    --muted-foreground: 82 82 91; /* --color-text-muted #52525b */
+    --accent: 248 250 252; /* --color-bg-canvas */
+    --accent-foreground: 3 7 18; /* --color-text-strong */
+    --destructive: 231 0 11; /* --color-feedback-error #e7000b */
+    --destructive-foreground: 255 255 255; /* --color-text-on-dark */
+    --border: 229 231 235; /* --color-border-default #e5e7eb */
+    --input: 82 82 91; /* --component-input-border #52525b */
+    --ring: 41 32 165; /* --color-focus-ring #2920a5 */
+    --radius: 0.5rem; /* --radius-lg 8px */
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-family-body);
+  }
 }
 
-* {
-  box-sizing: border-box;
-}
+@layer utilities {
+  /* Legacy styles for existing components - will be migrated */
+  :root {
+    --bg: #f6f1ea;
+    --ink: #1c1917;
+    --muted: #57534e;
+    --old-card: #fffdf9;
+    --accent: #c2410c;
+  }
 
-html,
-body {
-  margin: 0;
-  min-height: 100%;
-}
+  main {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+  }
 
-body {
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  background: var(--bg);
-  color: var(--ink);
-}
+  .card {
+    width: min(40rem, 100%);
+    background: var(--old-card);
+    border: 1px solid #e7e5e4;
+    border-radius: 1.25rem;
+    padding: 2.5rem;
+    box-shadow: 0 16px 40px rgba(28, 25, 23, 0.06);
+  }
 
-main {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 2rem;
-}
+  h1 {
+    margin: 0 0 0.75rem;
+    font-size: clamp(2rem, 5vw, 3rem);
+    letter-spacing: -0.04em;
+  }
 
-.card {
-  width: min(40rem, 100%);
-  background: var(--card);
-  border: 1px solid #e7e5e4;
-  border-radius: 1.25rem;
-  padding: 2.5rem;
-  box-shadow: 0 16px 40px rgba(28, 25, 23, 0.06);
-}
+  p {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.6;
+  }
 
-h1 {
-  margin: 0 0 0.75rem;
-  font-size: clamp(2rem, 5vw, 3rem);
-  letter-spacing: -0.04em;
-}
+  .eyebrow {
+    margin: 0 0 0.75rem;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
 
-p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.6;
-}
+  .status {
+    margin-top: 1.5rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.95rem;
+  }
 
-.eyebrow {
-  margin: 0 0 0.75rem;
-  color: var(--accent);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
+  .status-ok {
+    background: #ecfdf3;
+    color: #166534;
+  }
 
-.status {
-  margin-top: 1.5rem;
-  padding: 0.85rem 1rem;
-  border-radius: 0.75rem;
-  font-size: 0.95rem;
-}
-
-.status-ok {
-  background: #ecfdf3;
-  color: #166534;
-}
-
-.status-wait {
-  background: #fff7ed;
-  color: #9a3412;
+  .status-wait {
+    background: #fff7ed;
+    color: #9a3412;
+  }
 }
