@@ -23,7 +23,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-[var(--space-6)] p-[var(--space-24)]", className)}
+    className={cn("flex flex-col space-y-[var(--component-input-label-gap)] p-[var(--space-24)]", className)}
     {...props}
   />
 ))
@@ -36,7 +36,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "font-[family-name:var(--typography-display-sm-family)] text-[length:var(--typography-display-sm-size)] font-[number:var(--typography-display-sm-weight)] leading-[var(--typography-display-sm-line-height)] tracking-[var(--typography-display-sm-letter-spacing)] text-[var(--color-text-strong)]",
+      "font-[family-name:var(--typography-display-sm-family)] text-[length:var(--typography-display-sm-size)] font-[number:var(--typography-display-sm-weight)] leading-[var(--typography-display-sm-line-height)] tracking-[var(--typography-display-sm-letter-spacing)] text-[var(--color-text-heading)]",
       className
     )}
     {...props}

@@ -1,25 +1,29 @@
 :root {
-  /* GENERATED from tokens/tokens.json by tokens/build.py. Do not edit by hand. */
+  /* GENERATED from design/tokens/tokens.json by design/tokens/build.py. Do not edit by hand. */
   --color-brand-primary: #34d399;
   --color-brand-primary-hover: #2fc48d;
   --color-brand-secondary: #2920a5;
   --color-brand-secondary-hover: #211880;
   --color-brand-secondary-deep: #171544;
   --color-bg-dark: #0c0a28;
+  --color-bg-footer: #030712;
   --color-bg-canvas: #f8fafc;
   --color-bg-surface: #ffffff;
   --color-bg-nav: #fcfcfe;
   --color-bg-disabled: #d1d5db;
   --color-text-strong: #030712;
+  --color-text-heading: #0c0a28;
   --color-text-body: #232521;
   --color-text-muted: #52525b;
   --color-text-on-dark: #ffffff;
   --color-text-on-primary: #0c0a28;
   --color-text-disabled: #52525b;
   --color-border-default: #e5e7eb;
-  --color-border-input: #d1d5db;
+  --color-border-input: var(--color-text-muted);
   --color-feedback-error: #e7000b;
   --color-focus-ring: #2920a5;
+  --color-shadow-card: #00000014;
+  --color-shadow-soft: #5555551a;
   --gradient-gradient-1: linear-gradient(180deg, #1f0fb8 0%, #560fb8 25%, #8e0eb7 50%, #b80fa0 75%, #b80f3a 100%);
   --gradient-gradient-2: linear-gradient(180deg, #177fb0 0%, #174fb0 25%, #171fb1 50%, #4117b0 75%, #7317b0 100%);
   --gradient-gradient-3: linear-gradient(180deg, #03ab7e 0%, #03a0ab 25%, #0469aa 50%, #0336ab 75%, #0603ab 100%);
@@ -133,10 +137,10 @@
   --radius-xl: 12px;
   --radius-2xl: 16px;
   --radius-full: 9999px;
-  --shadow-card: 4px 8px 24px 0px rgba(0, 0, 0, 0.08);
-  --shadow-card-app: 4px 8px 12px 0px rgba(0, 0, 0, 0.08);
-  --shadow-soft: 6px 6px 16px 0px rgba(85, 85, 85, 0.1);
-  --shadow-raised: 0px 8px 20px 0px rgba(85, 85, 85, 0.1);
+  --shadow-card: 4px 8px 24px 0px {color.shadow.card};
+  --shadow-card-app: 4px 8px 12px 0px {color.shadow.card};
+  --shadow-soft: 6px 6px 16px 0px {color.shadow.soft};
+  --shadow-raised: 0px 8px 20px 0px {color.shadow.soft};
   --size-logo-mark-sm: 32px;
   --size-logo-mark-lg: 48px;
   --size-control-sm: 40px;
@@ -166,7 +170,9 @@
   --component-input-bg: var(--color-bg-surface);
   --component-input-text: var(--color-text-strong);
   --component-input-placeholder: var(--color-text-muted);
-  --component-input-border: var(--color-text-muted);
+  --component-input-border: var(--color-border-input);
+  --component-input-border-width: 1px;
+  --component-input-label-gap: var(--space-6);
   --component-input-border-focus: var(--color-brand-secondary);
   --component-input-border-error: var(--color-feedback-error);
   --component-input-bg-disabled: var(--color-bg-disabled);
@@ -174,6 +180,7 @@
   --component-input-height: var(--size-control-lg);
   --component-input-padding-y: var(--space-12);
   --component-input-padding-x: var(--space-16);
+  --component-nav-height: 65px;
   --component-focus-ring-color: var(--color-focus-ring);
   --component-focus-ring-color-on-dark: var(--color-brand-primary);
   --component-focus-ring-width: 2px;
