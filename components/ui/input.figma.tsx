@@ -7,13 +7,11 @@ figma.connect(
   {
     props: {
       placeholder: figma.textContent("Placeholder"),
-      disabled: figma.boolean("State", {
-        true: "disabled",
-        false: "default",
+      disabled: figma.enum("State", {
+        disabled: true,
       }),
-      error: figma.boolean("State", {
-        true: "error",
-        false: "default",
+      error: figma.enum("State", {
+        error: true,
       }),
     },
     example: ({ placeholder, disabled, error }) => (

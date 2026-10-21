@@ -16,13 +16,11 @@ figma.connect(
         sm: "sm",
         lg: "lg",
       }),
-      disabled: figma.boolean("State", {
-        true: "disabled",
-        false: "default",
+      disabled: figma.enum("State", {
+        disabled: true,
       }),
-      loading: figma.boolean("State", {
-        true: "loading",
-        false: "default",
+      loading: figma.enum("State", {
+        loading: true,
       }),
       children: figma.textContent("Label"),
     },
