@@ -151,6 +151,42 @@ near-duplicate pending decision. No dark-mode shadows.
 `--radius-md` 6px (inputs, nav items), `--radius-lg` 8px (buttons, cards, default),
 `--radius-xl` 12px, `--radius-2xl` 16px (app), `--radius-full` (pills), `--radius-sm` 4px.
 
+## Usage Rules (judgment)
+
+Derived from current repo code and live bookservice.tech (live wins). Light mode only. Rules marked
+*(proposed, confirm)* are the most conservative reading of current usage, not settled decisions.
+
+### Elevation: which surfaces cast a shadow
+- `--shadow-card`: content cards on a light page (`Card` component, blog link cards). The only shadow for cards.
+- `--shadow-soft`: small raised objects sitting on a section, e.g. testimonial avatars (live landing uses this exact value). Not for cards or containers.
+- `--shadow-raised`: floating/overlay surfaces only, e.g. the sticky mobile nav bar on audit results (current code uses a near-equal raw value; move it to this token). Also popovers/menus when built *(proposed, confirm)*.
+- `--shadow-card-app`: do not use until the duplicate decision is made; use `--shadow-card`.
+- Cast nothing: page background, full-width sections (incl. `bg-dark` and `bg-footer`), nav/header in normal flow, buttons, inputs, eyebrows, nested elements inside a card. Never stack a shadow inside a shadowed surface.
+- Hover never adds or grows a shadow (no hover state exists today) *(proposed, confirm)*.
+
+### Shapes: radius follows depth
+- `--radius-sm` (4px): small inline elements only (badges, chips, tags) *(proposed, confirm)*.
+- `--radius-md` (6px): controls inside a surface: inputs, nav items, small (`sm`) buttons.
+- `--radius-lg` (8px): the default: buttons, cards, audit result cards, mobile nav bar, dark panels.
+- `--radius-xl` (12px) / `--radius-2xl` (16px): reserved for larger app containers (modals, sheets) when built; not used on marketing today *(proposed, confirm)*.
+- Nested surfaces never use a larger radius than their parent.
+- `--radius-full`: only for things that are genuinely round: avatars, status dots, the logo mark. Never pill-shaped buttons, inputs, or cards.
+
+### Eyebrow
+- Use `Eyebrow` (or the landing `.landing-eyebrow` style) only to name the context above a page's primary hero heading, e.g. "Free Website Performance Audit". At most one per section, and only where the heading needs a category label.
+- **Do not put an eyebrow over every heading.** Section headings, card titles, and audit result headings get no eyebrow.
+- Text only (label type); no icons, pills, or backgrounds behind it *(proposed, confirm)*.
+
+### Gradients
+- `--gradient-gradient-1..3` are allowed only in decorative brand art/hero backgrounds as on live bookservice.tech. They are never used in app UI code today; keep it that way *(proposed, confirm)*.
+- Never behind body text, on buttons, inputs, cards, or text (no gradient text).
+- **No decorative gradients or border accents elsewhere**: no colored left/top accent borders on cards, callouts, or sections. Borders are functional only (`--color-border-default`, `--color-border-input`, focus/error states).
+
+### Audit results: no equal-weight metrics
+- Lead with the one number that matters: the results hero (`view.headline`) is the single dominant element; pillar grade cards sit below it, never at equal weight. If an overall score/grade is added, it goes in the hero and leads *(proposed, confirm)*.
+- Never show all metrics as same-size tiles or cards of equal emphasis. On a pillar detail, the pillar grade leads; individual checks are listed, not scored as equal headline numbers.
+- Grade color is the only emphasis on a grade; do not add extra badges, gradients, or accent borders to make metrics compete *(proposed, confirm)*.
+
 ## Components
 
 No Figma components exist; specs below come from live CSS, resolved to tokens (`component.*` in tokens.json).
